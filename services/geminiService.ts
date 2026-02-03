@@ -22,13 +22,23 @@ function robustJsonParse(text: string): any {
   return JSON.parse(clean);
 }
 
+/**
+ * Validates API key presence and returns a GoogleGenAI instance.
+ */
+function getGenAIClient(): GoogleGenAI {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("API CONFIG ERROR: No API key found in 'process.env.API_KEY'. Please ensure it is correctly set in your environment variables.");
+  }
+  return new GoogleGenAI({ apiKey });
+}
+
 /* ------------------ Functions ------------------ */
 
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
-  // Always initialize directly before use to ensure process.env.API_KEY is available in the scope
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAIClient();
 
   const prompt = `
 You are an AI-powered Engineering Project Mentor.
@@ -86,7 +96,7 @@ export async function generateProjectDeepDive(
   summary: ProjectSummary,
   prefs: UserPreferences
 ): Promise<ProjectDeepDive> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAIClient();
 
   const prompt = `
 Act as a Senior Engineering Architect and Project Mentor. 

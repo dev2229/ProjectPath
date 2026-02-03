@@ -5,17 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProjectPath - Engineering Project Guide</title>
-    <!-- Priority Polyfills -->
+    <!-- Non-destructive Polyfills -->
     <script>
+      // Crucial: Only define process/env if they don't exist to avoid overwriting injected keys
       window.global = window;
-      // Initialize window.process safely. 
-      // Do NOT overwrite existing process.env.API_KEY if it's already defined.
-      if (typeof window.process === 'undefined') {
-        window.process = { env: {} };
-      }
-      if (typeof window.process.env === 'undefined') {
-        window.process.env = {};
-      }
+      window.process = window.process || {};
+      window.process.env = window.process.env || {};
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -34,8 +29,8 @@
     "react-dom": "https://esm.sh/react-dom@19.0.0",
     "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
     "@google/genai": "https://esm.sh/@google/genai@1.3.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/"
+    "react/": "https://esm.sh/react@19.0.0/",
+    "react-dom/": "https://esm.sh/react-dom@19.0.0/"
   }
 }
 </script>
@@ -49,7 +44,7 @@
     </div>
     
     <script>
-      // Global error listener to help debug production "black screens" or API errors
+      // Global error listener to help debug production boot failures
       window.addEventListener('error', function(e) {
         console.error('Captured Global Error:', e);
         const root = document.getElementById('root');
@@ -62,7 +57,7 @@
                 ${e.message || 'The application encountered an unexpected initialization error.'} <br><br>
                 <span style="opacity: 0.5; font-size: 11px;">Source: ${e.filename || 'unknown'}</span>
               </div>
-              <p style="color: #64748b; font-size: 12px; margin-top: 24px; max-width: 400px;">If this persists, verify your deployment environment variables and network connectivity.</p>
+              <p style="color: #64748b; font-size: 12px; margin-top: 24px; max-width: 400px;">Check browser console for full logs. Verify API key environment variables.</p>
               <button onclick="location.reload()" style="margin-top: 30px; background: #ff5c00; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em;">Attempt Restart</button>
             </div>
           `;
