@@ -4,7 +4,7 @@ import { UserPreferences, ProjectSummary, ProjectDeepDive } from "../types.ts";
 /* ------------------ HELPERS ------------------ */
 
 /**
- * Robustly parses JSON output from the model, handling markdown blocks and truncated responses.
+ * Robustly parses JSON output from the model, handling markdown blocks and potential truncation.
  */
 function robustJsonParse(text: string): any {
   let clean = text.trim();
@@ -14,7 +14,7 @@ function robustJsonParse(text: string): any {
     clean = clean.replace(/^```json\s*|\s*```$/g, "");
   }
 
-  // Basic brace/bracket balancing to fix potential truncation
+  // Basic brace/bracket balancing to fix potential truncation from the model
   let braceCount = 0;
   let bracketCount = 0;
   for (let char of clean) {
@@ -31,7 +31,7 @@ function robustJsonParse(text: string): any {
     return JSON.parse(clean);
   } catch (e) {
     console.error("Failed to parse JSON from model output:", clean);
-    throw new Error("The AI returned architectural data that could not be processed. Please try again.");
+    throw new Error("The architectural engine returned data that could not be parsed. Please try a different domain or skill level.");
   }
 }
 
@@ -40,11 +40,11 @@ function robustJsonParse(text: string): any {
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
-  // Instantiate inside the function to ensure process.env.API_KEY is latest
+  // Use process.env.API_KEY directly as required
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-You are an AI-powered Engineering Project Mentor.
+You are an AI-powered Engineering Project Mentor for university students.
 
 Generate exactly 4 diverse engineering project ideas for:
 - Semester: ${prefs.semester}
@@ -52,16 +52,19 @@ Generate exactly 4 diverse engineering project ideas for:
 - Domain: ${prefs.domain}
 - Student Skill Level: ${prefs.skillLevel}
 
-STRICT ACADEMIC MAPPING:
-- ${prefs.skillLevel} Level → Map to appropriate difficulty.
+ACADEMIC REQUIREMENTS:
+- Projects must be relevant to the ${prefs.semester} semester curriculum for ${prefs.branch}.
+- They should be scoped for a group of 3-4 students.
+- Avoid trivial "Hello World" style projects or massive "Startup" level projects.
+- Map ${prefs.skillLevel} level to appropriate academic complexity.
 
 Return ONLY a JSON array of 4 objects.
 Descriptions must be under 15 words.
-Suitability field must explain why it's a perfect fit for a ${prefs.semester} semester project.
+Suitability field should reassure the student why this fits their current academic stage.
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-3-pro-preview", // Upgraded to Pro for better STEM/Engineering reasoning
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -75,7 +78,7 @@ Suitability field must explain why it's a perfect fit for a ${prefs.semester} se
             id: { type: Type.STRING },
             title: { type: Type.STRING },
             shortDescription: { type: Type.STRING },
-            difficulty: { type: Type.STRING, description: 'Easy, Medium, or Hard' },
+            difficulty: { type: Type.STRING, description: 'Easy or Medium' },
             suitability: { type: Type.STRING }
           },
           required: [
@@ -102,29 +105,26 @@ export async function generateProjectDeepDive(
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-Act as a Senior Engineering Architect. 
-Provide a comprehensive yet scannable blueprint for the project: "${summary.title}"
+Act as a Senior Engineering Architect and Project Mentor. 
+Provide a detailed, practical blueprint for the engineering project: "${summary.title}"
 
-Project Context: ${summary.shortDescription}
-Academic Context: Semester ${prefs.semester}, ${prefs.branch}
-Target Difficulty: ${summary.difficulty}
+CONTEXT:
+- Description: ${summary.shortDescription}
+- Academic Stage: Semester ${prefs.semester}, ${prefs.branch}
+- Difficulty Level: ${summary.difficulty}
+- Skill Level: ${prefs.skillLevel}
 
-Return a structured JSON object including:
-- title: The project title.
-- intro: A supportive 1-line intro to reduce student anxiety.
-- fullDescription: A technical yet clear project objective (max 40 words).
-- techStack: Array of objects {category: string, items: string[]} using student-friendly, documented tools.
-- roadmap: 6-8 weeks of milestones. Each item has week, task, and an array of 3 details.
-- resources: Array of objects {title: string, type: string, link: string}.
-- vivaPrep: {questions: string[], concepts: string[], mistakes: string[], evaluatorExpectations: string[]}.
-- presentationTips: 3 punchy, actionable tips.
-- closing: A motivating sign-off.
+INSTRUCTIONS:
+1. Recommend a practical, student-friendly tech stack.
+2. Create a week-wise execution roadmap (6-8 weeks) covering Planning, Dev, Testing, and Documentation.
+3. Provide viva/evaluation preparation details including common questions and concept anchors.
+4. Use motivating, supportive language to reduce student anxiety.
 
-STRICT JSON ONLY. No preamble.
+Return a structured JSON object. No markdown preamble.
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-pro-preview", // Use Pro for complex reasoning and roadmap generation
+    model: "gemini-3-pro-preview", // Pro model is essential for complex technical roadmaps
     contents: prompt,
     config: {
       responseMimeType: "application/json",
