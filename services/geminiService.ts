@@ -35,12 +35,12 @@ function robustJsonParse(text: string): any {
 }
 
 export async function generateProjectSummaries(prefs: UserPreferences): Promise<ProjectSummary[]> {
-  // Use process.env.API_KEY directly as required. 
-  // The global 'process' is defined in index.html for browser compatibility.
-  const apiKey = (process as any)?.env?.API_KEY;
+  // Use process.env.API_KEY directly as required by the instructions.
+  const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
-    throw new Error("Engineering Intelligence Offline: API_KEY is missing from environment configuration.");
+    // If this is triggered, it means the environment genuinely did not provide the key.
+    throw new Error("System Error: API Key not found in environment. Please check platform settings.");
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -94,10 +94,10 @@ export async function generateProjectSummaries(prefs: UserPreferences): Promise<
 }
 
 export async function generateProjectDeepDive(summary: ProjectSummary, prefs: UserPreferences): Promise<ProjectDeepDive> {
-  const apiKey = (process as any)?.env?.API_KEY;
+  const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
-    throw new Error("Engineering Intelligence Offline: API_KEY is missing.");
+    throw new Error("System Error: API Key not found in environment.");
   }
 
   const ai = new GoogleGenAI({ apiKey });
