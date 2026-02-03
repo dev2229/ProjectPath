@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { MentorOutput } from '../types';
-import Card from './Card';
+import { MentorOutput } from '../types.ts';
+import Card from './Card.tsx';
 
 interface ProjectMentorOutputProps {
   data: MentorOutput;

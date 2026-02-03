@@ -5,109 +5,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProjectPath - Engineering Project Guide</title>
-    <!-- Robust Polyfill for process.env -->
+    <!-- Priority 1: Global Polyfills -->
     <script>
       (function() {
-        var processPolyfill = { 
-          env: { 
-            API_KEY: "",
-            NODE_ENV: "production"
-          } 
+        var p = { 
+          env: { API_KEY: "", NODE_ENV: "production" },
+          cwd: function() { return '/'; },
+          nextTick: function(f) { setTimeout(f, 0); }
         };
-        window.process = processPolyfill;
+        window.process = p;
+        window.global = window;
       })();
-      var process = window.process;
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --brand-orange: #ff5c00;
-            --bg-dark: #050505;
-        }
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: var(--bg-dark);
-            color: #f8fafc;
-            margin: 0;
-            min-height: 100vh;
-        }
-        .premium-bg {
-            background-color: var(--bg-dark);
-            min-height: 100vh;
-            position: relative;
-            overflow-x: hidden;
-        }
-        .horizon-glow {
-            position: absolute;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 150vw;
-            height: 80vh;
-            background: radial-gradient(circle at 50% 100%, rgba(255, 92, 0, 0.15) 0%, transparent 60%);
-            pointer-events: none;
-            z-index: 1;
-        }
-        .horizon-line {
-            position: absolute;
-            top: 45%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 200%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--brand-orange), transparent);
-            opacity: 0.3;
-            z-index: 2;
-        }
-        .grid-pattern {
-            position: absolute;
-            inset: 0;
-            background-image: 
-                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), 
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 4rem 4rem;
-            mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, #000 70%, transparent 100%);
-            pointer-events: none;
-            opacity: 0.6;
-            z-index: 0;
-        }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #050505; }
-        ::-webkit-scrollbar-thumb { background: #222; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--brand-orange); }
+        :root { --brand-orange: #ff5c00; --bg-dark: #050505; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-dark); color: #f8fafc; margin: 0; min-height: 100vh; }
+        .premium-bg { background-color: var(--bg-dark); min-height: 100vh; position: relative; overflow-x: hidden; }
+        .horizon-glow { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 150vw; height: 80vh; background: radial-gradient(circle at 50% 100%, rgba(255, 92, 0, 0.15) 0%, transparent 60%); pointer-events: none; z-index: 1; }
+        .horizon-line { position: absolute; top: 45%; left: 50%; transform: translateX(-50%); width: 200%; height: 1px; background: linear-gradient(90deg, transparent, var(--brand-orange), transparent); opacity: 0.3; z-index: 2; }
+        .grid-pattern { position: absolute; inset: 0; background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 4rem 4rem; mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, #000 70%, transparent 100%); pointer-events: none; opacity: 0.6; z-index: 0; }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.3.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
-    "@google/genai": "https://esm.sh/@google/genai@^1.39.0"
+    "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="background: #050505; color: #ff5c00; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center;">
+        <div style="font-weight: 900; font-size: 24px; letter-spacing: -0.05em; margin-bottom: 10px;">PROJECT<span style="color: white;">PATH</span></div>
+        <div style="font-size: 10px; font-weight: 800; letter-spacing: 0.4em; opacity: 0.5;">INITIALIZING ARCHITECTURAL ENGINE...</div>
+      </div>
+    </div>
+    
     <script>
-      // Global error handler to show errors on screen during black screen issues
-      window.onerror = function(msg, url, line, col, error) {
+      // Capture module load errors specifically
+      window.addEventListener('error', function(e) {
         const root = document.getElementById('root');
-        if (root && !root.hasChildNodes()) {
+        if (root) {
           root.innerHTML = `
-            <div style="background: #111; color: #ff5c00; padding: 40px; font-family: sans-serif; text-align: center; border: 1px solid #333; margin: 20px; border-radius: 20px;">
-              <h1 style="margin: 0 0 20px 0; font-size: 24px;">Critical Application Error</h1>
-              <p style="color: #888; margin-bottom: 10px;">The app failed to load at the source.</p>
-              <div style="background: #000; padding: 15px; border-radius: 10px; font-family: monospace; font-size: 13px; text-align: left; border: 1px solid #222; overflow: auto; color: #ff5c00;">
-                ${msg} <br> <span style="color: #444;">at ${url}:${line}:${col}</span>
+            <div style="background: #050505; color: #ff5c00; padding: 40px; font-family: sans-serif; text-align: center; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <h1 style="font-weight: 900; margin-bottom: 20px;">SYSTEM FAILURE</h1>
+              <div style="background: #111; padding: 20px; border-radius: 12px; border: 1px solid #222; max-width: 80%; overflow: auto; text-align: left; font-family: monospace; font-size: 12px;">
+                ${e.message || 'Module Resolution Error'} <br>
+                <span style="opacity: 0.4;">${e.filename || 'Unknown Source'}</span>
               </div>
-              <p style="color: #555; font-size: 12px; margin-top: 20px;">Common causes: Missing environment variables or module resolution failures.</p>
+              <button onclick="location.reload()" style="margin-top: 20px; background: #ff5c00; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 800; cursor: pointer;">REBOOT SYSTEM</button>
             </div>
           `;
         }
-      };
+      }, true);
     </script>
     <script type="module" src="index.tsx"></script>
 </body>

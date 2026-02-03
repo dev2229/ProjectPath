@@ -1,25 +1,23 @@
 
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+
+console.log("ProjectPath: Booting architectural engine...");
 
 const rootElement = document.getElementById('root');
 
-if (!rootElement) {
-  console.error("Initialization failure: Root element #root not found in document.");
-} else {
+if (rootElement) {
   try {
-    const root = ReactDOM.createRoot(rootElement);
+    const root = createRoot(rootElement);
     root.render(
       <React.StrictMode>
         <App />
       </React.StrictMode>
     );
-    console.log("ProjectPath Application Mounted Successfully.");
+    console.log("ProjectPath: System ready.");
   } catch (err) {
-    console.error("Mounting Error:", err);
-    if (rootElement) {
-      rootElement.innerHTML = `<div style="padding: 40px; color: white; text-align: center;">Mounting failed: ${err instanceof Error ? err.message : 'Unknown Error'}</div>`;
-    }
+    console.error("ProjectPath: Mount Exception:", err);
+    rootElement.innerHTML = `<div style="color: white; padding: 50px;">Mount Failed: ${err instanceof Error ? err.message : 'Unknown'}</div>`;
   }
 }
