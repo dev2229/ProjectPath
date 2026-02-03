@@ -1,70 +1,61 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserPreferences, ProjectSummary, ProjectDeepDive } from "../types.ts";
 
-/* ------------------ HELPERS ------------------ */
-
 /**
- * Robustly parses JSON output from the model, handling markdown blocks and potential truncation.
+ * Robustly parses and repairs JSON from Gemini model output.
  */
 function robustJsonParse(text: string): any {
   let clean = text.trim();
 
-  // Remove markdown code blocks if present
+  // Strip Markdown markers if present
   if (clean.startsWith("```")) {
     clean = clean.replace(/^```json\s*|\s*```$/g, "");
   }
 
-  // Basic brace/bracket balancing to fix potential truncation from the model
-  let braceCount = 0;
-  let bracketCount = 0;
-  for (let char of clean) {
-    if (char === '{') braceCount++;
-    else if (char === '}') braceCount--;
-    else if (char === '[') bracketCount++;
-    else if (char === ']') bracketCount--;
-  }
+  // Simple auto-balancing for truncated JSON responses
+  let openBraces = (clean.match(/\{/g) || []).length;
+  let closeBraces = (clean.match(/\}/g) || []).length;
+  while (openBraces > closeBraces) { clean += "}"; closeBraces++; }
 
-  while (braceCount > 0) { clean += '}'; braceCount--; }
-  while (bracketCount > 0) { clean += ']'; bracketCount--; }
+  let openBrackets = (clean.match(/\[/g) || []).length;
+  let closeBrackets = (clean.match(/\]/g) || []).length;
+  while (openBrackets > closeBrackets) { clean += "]"; closeBrackets++; }
 
   try {
     return JSON.parse(clean);
   } catch (e) {
-    console.error("Failed to parse JSON from model output:", clean);
-    throw new Error("The architectural engine returned data that could not be parsed. Please try a different domain or skill level.");
+    console.error("JSON Parse Error. Raw content:", text);
+    throw new Error("The AI returned a blueprint that was too complex to parse. Please try adjusting your parameters.");
   }
 }
 
-/* ------------------ PROJECT SUMMARIES ------------------ */
-
+/**
+ * Generates 4 tailored project ideas based on student preferences.
+ */
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
-  // Use process.env.API_KEY directly as required
+  // Initialize SDK with required process.env.API_KEY
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-You are an AI-powered Engineering Project Mentor for university students.
-
-Generate exactly 4 diverse engineering project ideas for:
+You are a Senior Engineering Project Mentor. Generate 4 unique project ideas for a student with these details:
 - Semester: ${prefs.semester}
 - Branch: ${prefs.branch}
 - Domain: ${prefs.domain}
-- Student Skill Level: ${prefs.skillLevel}
+- Skill Level: ${prefs.skillLevel}
 
-ACADEMIC REQUIREMENTS:
-- Projects must be relevant to the ${prefs.semester} semester curriculum for ${prefs.branch}.
-- They should be scoped for a group of 3-4 students.
-- Avoid trivial "Hello World" style projects or massive "Startup" level projects.
-- Map ${prefs.skillLevel} level to appropriate academic complexity.
+Criteria:
+- Must be academically rigorous for a group of 3-4 students.
+- Should avoid common "beginner" clones unless the skill level is Beginner.
+- Descriptions must be highly professional and under 15 words.
+- Difficulty should be "Easy", "Medium", or "Hard" based on the ${prefs.skillLevel} level.
 
-Return ONLY a JSON array of 4 objects.
-Descriptions must be under 15 words.
-Suitability field should reassure the student why this fits their current academic stage.
+Return exactly 4 ideas in a JSON array.
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-pro-preview", // Upgraded to Pro for better STEM/Engineering reasoning
+    model: "gemini-3-flash-preview", // Flash is perfect for quick idea generation
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -78,16 +69,10 @@ Suitability field should reassure the student why this fits their current academ
             id: { type: Type.STRING },
             title: { type: Type.STRING },
             shortDescription: { type: Type.STRING },
-            difficulty: { type: Type.STRING, description: 'Easy or Medium' },
+            difficulty: { type: Type.STRING },
             suitability: { type: Type.STRING }
           },
-          required: [
-            "id",
-            "title",
-            "shortDescription",
-            "difficulty",
-            "suitability"
-          ]
+          required: ["id", "title", "shortDescription", "difficulty", "suitability"]
         }
       }
     }
@@ -96,8 +81,9 @@ Suitability field should reassure the student why this fits their current academ
   return robustJsonParse(response.text);
 }
 
-/* ------------------ PROJECT DEEP DIVE ------------------ */
-
+/**
+ * Generates a deep-dive project roadmap and viva preparation guide.
+ */
 export async function generateProjectDeepDive(
   summary: ProjectSummary,
   prefs: UserPreferences
@@ -105,26 +91,24 @@ export async function generateProjectDeepDive(
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-Act as a Senior Engineering Architect and Project Mentor. 
-Provide a detailed, practical blueprint for the engineering project: "${summary.title}"
+Act as a Senior Project Architect. Provide a full technical blueprint for the project: "${summary.title}".
 
-CONTEXT:
-- Description: ${summary.shortDescription}
-- Academic Stage: Semester ${prefs.semester}, ${prefs.branch}
-- Difficulty Level: ${summary.difficulty}
-- Skill Level: ${prefs.skillLevel}
+Academic Context: Semester ${prefs.semester}, ${prefs.branch}
+Description: ${summary.shortDescription}
 
-INSTRUCTIONS:
-1. Recommend a practical, student-friendly tech stack.
-2. Create a week-wise execution roadmap (6-8 weeks) covering Planning, Dev, Testing, and Documentation.
-3. Provide viva/evaluation preparation details including common questions and concept anchors.
-4. Use motivating, supportive language to reduce student anxiety.
-
-Return a structured JSON object. No markdown preamble.
+Return a JSON object containing:
+1. intro: A 1-line encouraging intro.
+2. fullDescription: A detailed 2-paragraph technical objective.
+3. techStack: Array of categories (Frontend, Backend, etc.) and specific items.
+4. roadmap: A 6-8 week breakdown with tasks and 3 bullet points of detail each.
+5. resources: 3 helpful learning links/titles.
+6. vivaPrep: 5 questions, 5 core concepts, 3 common mistakes, and 4 evaluator expectations.
+7. presentationTips: 3 punchy tips for final demo.
+8. closing: A final 1-line motivating sign-off.
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-pro-preview", // Pro model is essential for complex technical roadmaps
+    model: "gemini-3-pro-preview", // Pro model is used for complex reasoning/roadmapping
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -134,7 +118,7 @@ Return a structured JSON object. No markdown preamble.
           title: { type: Type.STRING },
           intro: { type: Type.STRING },
           fullDescription: { type: Type.STRING },
-          techStack: { 
+          techStack: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
@@ -144,7 +128,7 @@ Return a structured JSON object. No markdown preamble.
               }
             }
           },
-          roadmap: { 
+          roadmap: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
@@ -166,8 +150,8 @@ Return a structured JSON object. No markdown preamble.
               }
             }
           },
-          vivaPrep: { 
-            type: Type.OBJECT, 
+          vivaPrep: {
+            type: Type.OBJECT,
             properties: {
               questions: { type: Type.ARRAY, items: { type: Type.STRING } },
               concepts: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -178,15 +162,7 @@ Return a structured JSON object. No markdown preamble.
           presentationTips: { type: Type.ARRAY, items: { type: Type.STRING } },
           closing: { type: Type.STRING }
         },
-        required: [
-          "title",
-          "intro",
-          "fullDescription",
-          "techStack",
-          "roadmap",
-          "vivaPrep",
-          "closing"
-        ]
+        required: ["title", "intro", "fullDescription", "techStack", "roadmap", "vivaPrep", "closing"]
       }
     }
   });
