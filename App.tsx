@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ProjectForm from './components/ProjectForm.tsx';
 import ProjectList from './components/ProjectList.tsx';
 import ProjectDetail from './components/ProjectDetail.tsx';
@@ -20,11 +20,6 @@ const App: React.FC = () => {
   const [summaries, setSummaries] = useState<ProjectSummary[]>([]);
   const [selectedDetail, setSelectedDetail] = useState<ProjectDeepDive | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [hasMounted, setHasMounted] = useState(false);
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
 
   const handleFormSubmit = async (newPrefs: UserPreferences) => {
     setIsLoading(true);
@@ -74,10 +69,6 @@ const App: React.FC = () => {
     setError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  if (!hasMounted) {
-    return <div className="min-h-screen bg-[#050505]"></div>;
-  }
 
   return (
     <div className="premium-bg selection:bg-orange-500/30 selection:text-white flex flex-col min-h-screen">
@@ -169,7 +160,6 @@ const App: React.FC = () => {
 
         <footer className="pt-24 pb-16 border-t border-white/5 bg-[#050505] relative z-20">
           <div className="container mx-auto px-8 max-w-7xl">
-            {/* Top Footer Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16 lg:gap-12 mb-24">
               <div className="space-y-8 text-center sm:text-left">
                 <div className="text-4xl font-black tracking-tighter text-white">
@@ -215,7 +205,6 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Bottom Footer Section */}
             <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-10">
               <div className="flex flex-col md:flex-row items-center gap-6 md:gap-12">
                 <p className="text-slate-500 font-bold text-[11px] tracking-[0.4em] uppercase">

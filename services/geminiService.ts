@@ -2,15 +2,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserPreferences, ProjectSummary, ProjectDeepDive } from "../types.ts";
 
-// Prevent crashes in browser environments where process is not defined
-const getApiKey = () => {
-  try {
-    return (window as any).process?.env?.API_KEY || (process as any)?.env?.API_KEY || '';
-  } catch {
-    return '';
-  }
-};
-
 /**
  * Attempts to repair common JSON truncation issues from AI models.
  */
@@ -44,12 +35,7 @@ function robustJsonParse(text: string): any {
 }
 
 export async function generateProjectSummaries(prefs: UserPreferences): Promise<ProjectSummary[]> {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error("API Configuration Missing: Please set the API_KEY environment variable.");
-  }
-  
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   
   const prompt = `
     You are an AI-powered Engineering Project Mentor.
@@ -100,12 +86,7 @@ export async function generateProjectSummaries(prefs: UserPreferences): Promise<
 }
 
 export async function generateProjectDeepDive(summary: ProjectSummary, prefs: UserPreferences): Promise<ProjectDeepDive> {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error("API Configuration Missing: Please set the API_KEY environment variable.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   
   const prompt = `
     Act as a Senior Engineering Architect. 
