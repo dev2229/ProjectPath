@@ -5,9 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProjectPath - Engineering Project Guide</title>
-    <!-- Polyfill process before any modules load -->
+    <!-- Robust Polyfill for process.env -->
     <script>
-      window.process = { env: { API_KEY: '' } };
+      (function() {
+        var processPolyfill = { 
+          env: { 
+            API_KEY: "",
+            NODE_ENV: "production"
+          } 
+        };
+        window.process = processPolyfill;
+        // Global variable definition is required for ES modules 
+        // that reference 'process' without the 'window.' prefix.
+        window.process = processPolyfill;
+      })();
+      // Create global identifier
+      var process = window.process;
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -28,7 +41,6 @@
             position: relative;
             overflow-x: hidden;
         }
-        /* Horizon Glow Effect */
         .horizon-glow {
             position: absolute;
             top: 40%;
@@ -63,20 +75,10 @@
             opacity: 0.6;
             z-index: 0;
         }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #050505;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #222;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--brand-orange);
-        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--brand-orange); }
     </style>
 <script type="importmap">
 {
@@ -91,6 +93,21 @@
 </head>
 <body>
     <div id="root"></div>
+    <!-- Fail-safe error reporter -->
+    <script>
+      window.addEventListener('error', function(e) {
+        if (e.message.includes('process is not defined') || e.message.includes('import')) {
+          var root = document.getElementById('root');
+          if (root && !root.hasChildNodes()) {
+            root.innerHTML = '<div style="padding: 40px; color: #ff5c00; font-family: sans-serif; text-align: center;">' +
+              '<h2 style="font-weight: 800;">CRITICAL INITIALIZATION ERROR</h2>' +
+              '<p style="color: #64748b;">' + e.message + '</p>' +
+              '<p style="font-size: 12px; margin-top: 20px; opacity: 0.5;">Ensure API_KEY is set in environment variables.</p>' +
+              '</div>';
+          }
+        }
+      });
+    </script>
     <script type="module" src="index.tsx"></script>
 </body>
 </html>

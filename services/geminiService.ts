@@ -35,7 +35,15 @@ function robustJsonParse(text: string): any {
 }
 
 export async function generateProjectSummaries(prefs: UserPreferences): Promise<ProjectSummary[]> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  // Use process.env.API_KEY directly as required. 
+  // The global 'process' is defined in index.html for browser compatibility.
+  const apiKey = (process as any)?.env?.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("Engineering Intelligence Offline: API_KEY is missing from environment configuration.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
     You are an AI-powered Engineering Project Mentor.
@@ -86,7 +94,13 @@ export async function generateProjectSummaries(prefs: UserPreferences): Promise<
 }
 
 export async function generateProjectDeepDive(summary: ProjectSummary, prefs: UserPreferences): Promise<ProjectDeepDive> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  const apiKey = (process as any)?.env?.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("Engineering Intelligence Offline: API_KEY is missing.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
     Act as a Senior Engineering Architect. 
