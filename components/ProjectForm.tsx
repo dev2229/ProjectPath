@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Branch, SkillLevel, UserPreferences } from '../types';
-import Button from './Button';
+import { Branch, SkillLevel, UserPreferences } from '../types.ts';
+import Button from './Button.tsx';
 
 interface ProjectFormProps {
   onSubmit: (prefs: UserPreferences) => void;

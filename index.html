@@ -15,11 +15,7 @@
           } 
         };
         window.process = processPolyfill;
-        // Global variable definition is required for ES modules 
-        // that reference 'process' without the 'window.' prefix.
-        window.process = processPolyfill;
       })();
-      // Create global identifier
       var process = window.process;
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -34,6 +30,7 @@
             background-color: var(--bg-dark);
             color: #f8fafc;
             margin: 0;
+            min-height: 100vh;
         }
         .premium-bg {
             background-color: var(--bg-dark);
@@ -86,6 +83,7 @@
     "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
     "@google/genai": "https://esm.sh/@google/genai@^1.39.0"
   }
 }
@@ -93,20 +91,23 @@
 </head>
 <body>
     <div id="root"></div>
-    <!-- Fail-safe error reporter -->
     <script>
-      window.addEventListener('error', function(e) {
-        if (e.message.includes('process is not defined') || e.message.includes('import')) {
-          var root = document.getElementById('root');
-          if (root && !root.hasChildNodes()) {
-            root.innerHTML = '<div style="padding: 40px; color: #ff5c00; font-family: sans-serif; text-align: center;">' +
-              '<h2 style="font-weight: 800;">CRITICAL INITIALIZATION ERROR</h2>' +
-              '<p style="color: #64748b;">' + e.message + '</p>' +
-              '<p style="font-size: 12px; margin-top: 20px; opacity: 0.5;">Ensure API_KEY is set in environment variables.</p>' +
-              '</div>';
-          }
+      // Global error handler to show errors on screen during black screen issues
+      window.onerror = function(msg, url, line, col, error) {
+        const root = document.getElementById('root');
+        if (root && !root.hasChildNodes()) {
+          root.innerHTML = `
+            <div style="background: #111; color: #ff5c00; padding: 40px; font-family: sans-serif; text-align: center; border: 1px solid #333; margin: 20px; border-radius: 20px;">
+              <h1 style="margin: 0 0 20px 0; font-size: 24px;">Critical Application Error</h1>
+              <p style="color: #888; margin-bottom: 10px;">The app failed to load at the source.</p>
+              <div style="background: #000; padding: 15px; border-radius: 10px; font-family: monospace; font-size: 13px; text-align: left; border: 1px solid #222; overflow: auto; color: #ff5c00;">
+                ${msg} <br> <span style="color: #444;">at ${url}:${line}:${col}</span>
+              </div>
+              <p style="color: #555; font-size: 12px; margin-top: 20px;">Common causes: Missing environment variables or module resolution failures.</p>
+            </div>
+          `;
         }
-      });
+      };
     </script>
     <script type="module" src="index.tsx"></script>
 </body>

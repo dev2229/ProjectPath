@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { ProjectSummary } from '../types';
-import Card from './Card';
-import Button from './Button';
+import { ProjectSummary } from '../types.ts';
+import Card from './Card.tsx';
+import Button from './Button.tsx';
 
 interface ProjectListProps {
   summaries: ProjectSummary[];

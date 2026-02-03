@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ProjectDeepDive } from '../types';
-import Card from './Card';
-import Button from './Button';
+import { ProjectDeepDive } from '../types.ts';
+import Card from './Card.tsx';
+import Button from './Button.tsx';
 
 interface ProjectDetailProps {
   data: ProjectDeepDive;
