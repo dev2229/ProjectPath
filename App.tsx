@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
-import ProjectForm from './components/ProjectForm';
-import ProjectList from './components/ProjectList';
-import ProjectDetail from './components/ProjectDetail';
-import { UserPreferences, ProjectSummary, ProjectDeepDive } from './types';
-import { generateProjectSummaries, generateProjectDeepDive } from './services/geminiService';
+import React, { useState, useEffect } from 'react';
+import ProjectForm from './components/ProjectForm.tsx';
+import ProjectList from './components/ProjectList.tsx';
+import ProjectDetail from './components/ProjectDetail.tsx';
+import { UserPreferences, ProjectSummary, ProjectDeepDive } from './types.ts';
+import { generateProjectSummaries, generateProjectDeepDive } from './services/geminiService.ts';
 
 enum AppView {
   FORM,
@@ -20,6 +20,11 @@ const App: React.FC = () => {
   const [summaries, setSummaries] = useState<ProjectSummary[]>([]);
   const [selectedDetail, setSelectedDetail] = useState<ProjectDeepDive | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const handleFormSubmit = async (newPrefs: UserPreferences) => {
     setIsLoading(true);
@@ -69,6 +74,10 @@ const App: React.FC = () => {
     setError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  if (!hasMounted) {
+    return <div className="min-h-screen bg-[#050505]"></div>;
+  }
 
   return (
     <div className="premium-bg selection:bg-orange-500/30 selection:text-white flex flex-col min-h-screen">
@@ -143,7 +152,7 @@ const App: React.FC = () => {
           )}
         </main>
 
-        {/* Global Project Initialization Overlay - Ensuring full coverage */}
+        {/* Global Project Initialization Overlay */}
         {isLoadingDetail && (
           <div className="fixed inset-0 bg-black z-[10000] flex items-center justify-center p-6 animate-in fade-in duration-500">
             <div className="bg-[#0a0a0a] rounded-[3rem] p-16 text-center max-w-md w-full shadow-[0_0_100px_rgba(255,92,0,0.2)] border border-white/10 animate-in zoom-in-95">
