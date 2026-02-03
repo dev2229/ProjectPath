@@ -5,13 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProjectPath - Engineering Project Guide</title>
-    <!-- Non-destructive Polyfills -->
+    <!-- Priority Polyfills -->
     <script>
       window.global = window;
-      // Define process only if it doesn't exist, and preserve env if it does.
+      // Initialize window.process safely. 
+      // Do NOT overwrite existing process.env.API_KEY if it's already defined.
       if (typeof window.process === 'undefined') {
         window.process = { env: {} };
-      } else if (typeof window.process.env === 'undefined') {
+      }
+      if (typeof window.process.env === 'undefined') {
         window.process.env = {};
       }
     </script>
@@ -51,15 +53,16 @@
       window.addEventListener('error', function(e) {
         console.error('Captured Global Error:', e);
         const root = document.getElementById('root');
-        // Only show error UI if the app hasn't rendered yet (still showing the loader)
         if (root && root.innerText.includes('INITIALIZING')) {
           root.innerHTML = `
             <div style="background: #050505; color: #ff5c00; padding: 40px; font-family: sans-serif; text-align: center; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
               <h1 style="font-weight: 900; margin-bottom: 20px; font-size: 32px;">BOOT FAILURE</h1>
               <div style="background: #111; padding: 20px; border-radius: 12px; border: 1px solid #222; max-width: 80%; overflow: auto; text-align: left; font-family: monospace; font-size: 13px; color: #ff5c00;">
-                <strong style="color: white;">Error:</strong> ${e.message || 'Unknown resolution error'} <br><br>
-                <span style="opacity: 0.5;">Source: ${e.filename || 'module-graph'}</span>
+                <strong style="color: white;">Error Details:</strong><br>
+                ${e.message || 'The application encountered an unexpected initialization error.'} <br><br>
+                <span style="opacity: 0.5; font-size: 11px;">Source: ${e.filename || 'unknown'}</span>
               </div>
+              <p style="color: #64748b; font-size: 12px; margin-top: 24px; max-width: 400px;">If this persists, verify your deployment environment variables and network connectivity.</p>
               <button onclick="location.reload()" style="margin-top: 30px; background: #ff5c00; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em;">Attempt Restart</button>
             </div>
           `;

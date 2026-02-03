@@ -2,64 +2,52 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserPreferences, ProjectSummary, ProjectDeepDive } from "../types.ts";
 
-/**
- * Attempts to repair common JSON truncation issues from AI models.
- */
+/* ------------------ Helpers ------------------ */
+
 function robustJsonParse(text: string): any {
   let clean = text.trim();
+
   if (clean.startsWith("```json")) {
     clean = clean.replace(/^```json\n?|\n?```$/g, "").trim();
   }
 
-  // Handle unterminated strings at the very end
-  if (clean.lastIndexOf('"') > clean.lastIndexOf(':') && !clean.endsWith('"') && !clean.endsWith('}') && !clean.endsWith(']')) {
-    clean += '"';
-  }
-
-  // Balanced braces/brackets
   let openBraces = (clean.match(/\{/g) || []).length;
   let closeBraces = (clean.match(/\}/g) || []).length;
-  while (openBraces > closeBraces) {
-    clean += '}';
-    closeBraces++;
-  }
+  while (openBraces > closeBraces) clean += "}";
 
   let openBrackets = (clean.match(/\[/g) || []).length;
   let closeBrackets = (clean.match(/\]/g) || []).length;
-  while (openBrackets > closeBrackets) {
-    clean += ']';
-    closeBrackets++;
-  }
+  while (openBrackets > closeBrackets) clean += "]";
 
   return JSON.parse(clean);
 }
 
-export async function generateProjectSummaries(prefs: UserPreferences): Promise<ProjectSummary[]> {
-  // Use process.env.API_KEY directly as required by the instructions.
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey) {
-    // If this is triggered, it means the environment genuinely did not provide the key.
-    throw new Error("System Error: API Key not found in environment. Please check platform settings.");
-  }
+/* ------------------ Functions ------------------ */
 
-  const ai = new GoogleGenAI({ apiKey });
-  
+export async function generateProjectSummaries(
+  prefs: UserPreferences
+): Promise<ProjectSummary[]> {
+  // Always initialize directly before use to ensure process.env.API_KEY is available in the scope
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   const prompt = `
-    You are an AI-powered Engineering Project Mentor.
-    Generate exactly 4 diverse project ideas for:
-    - Semester: ${prefs.semester}
-    - Branch: ${prefs.branch}
-    - Domain: ${prefs.domain}
-    - User Skill Level: ${prefs.skillLevel}
+You are an AI-powered Engineering Project Mentor.
 
-    STRICT CONSTRAINTS ON DIFFICULTY:
-    - If User Skill Level is "Beginner", the Difficulty for ALL 4 projects MUST be 'Easy'.
-    - If User Skill Level is "Intermediate", the Difficulty for ALL 4 projects MUST be 'Medium'.
-    - If User Skill Level is "Advanced", the Difficulty for ALL 4 projects MUST be 'Hard'.
+Generate exactly 4 diverse engineering project ideas for:
+- Semester: ${prefs.semester}
+- Branch: ${prefs.branch}
+- Domain: ${prefs.domain}
+- Student Skill Level: ${prefs.skillLevel}
 
-    Return a JSON array of exactly 4 objects. Keep descriptions punchy and under 15 words.
-  `;
+Rules for Academic Appropriateness:
+- Beginner Level → Easy projects (Foundational, clear scope)
+- Intermediate Level → Medium projects (Integrated systems, moderate complexity)
+- Advanced Level → Hard projects (Research-based, high technical depth)
+
+Return ONLY a JSON array of 4 objects.
+Descriptions must be under 15 words.
+Each suitability field should explain why this is perfect for a ${prefs.semester} student.
+`;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
@@ -79,81 +67,83 @@ export async function generateProjectSummaries(prefs: UserPreferences): Promise<
             difficulty: { type: Type.STRING },
             suitability: { type: Type.STRING }
           },
-          required: ["id", "title", "shortDescription", "difficulty", "suitability"]
+          required: [
+            "id",
+            "title",
+            "shortDescription",
+            "difficulty",
+            "suitability"
+          ]
         }
       }
     }
   });
 
-  try {
-    return robustJsonParse(response.text);
-  } catch (e) {
-    console.error("Summary Parsing Error:", e);
-    throw new Error("Blueprint retrieval failed. System recalibrating. Please retry.");
-  }
+  return robustJsonParse(response.text);
 }
 
-export async function generateProjectDeepDive(summary: ProjectSummary, prefs: UserPreferences): Promise<ProjectDeepDive> {
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey) {
-    throw new Error("System Error: API Key not found in environment.");
-  }
+export async function generateProjectDeepDive(
+  summary: ProjectSummary,
+  prefs: UserPreferences
+): Promise<ProjectDeepDive> {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  const ai = new GoogleGenAI({ apiKey });
-  
   const prompt = `
-    Act as a Senior Engineering Architect. 
-    Provide a SUPER CONCISE deep dive for: "${summary.title}"
-    Context: ${summary.shortDescription}
-    Level: ${prefs.skillLevel} Student.
+Act as a Senior Engineering Architect and Project Mentor. 
+Provide a comprehensive yet scannable blueprint for the project: "${summary.title}"
 
-    RULES:
-    - ABSOLUTELY NO FLUFF. Minimalist text only.
-    - Each field must be brief.
-    - Roadmap: Max 5 phases. 3 short sub-tasks each.
-    - Viva: Exactly 4 questions and 4 concepts.
-    - Total response must be under 500 words to ensure JSON integrity.
-  `;
+Context: ${summary.shortDescription}
+Semester: ${prefs.semester} (${prefs.branch})
+Level: ${prefs.skillLevel}
+
+Return a structured JSON object including:
+- title: The project title.
+- intro: A supportive 1-line intro.
+- fullDescription: A clear project objective (max 40 words).
+- techStack: Array of objects {category: string, items: string[]} (Practical, student-friendly tech).
+- roadmap: 6-8 weeks of milestones.
+- resources: Helpful learning assets.
+- vivaPrep: Common questions, concepts, and typical mistakes.
+- presentationTips: 3 punchy tips.
+- closing: A motivating sign-off.
+
+STRICT JSON ONLY. No preamble.
+`;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
-      thinkingConfig: { thinkingBudget: 0 },
       responseSchema: {
         type: Type.OBJECT,
         properties: {
           title: { type: Type.STRING },
-          intro: { type: Type.STRING, description: "One short sentence." },
-          fullDescription: { type: Type.STRING, description: "Max 40 words." },
-          techStack: {
+          intro: { type: Type.STRING },
+          fullDescription: { type: Type.STRING },
+          techStack: { 
             type: Type.ARRAY,
-            maxItems: 4,
             items: {
               type: Type.OBJECT,
               properties: {
                 category: { type: Type.STRING },
-                items: { type: Type.ARRAY, maxItems: 3, items: { type: Type.STRING } }
+                items: { type: Type.ARRAY, items: { type: Type.STRING } }
               }
             }
           },
-          roadmap: {
+          roadmap: { 
             type: Type.ARRAY,
-            maxItems: 5,
             items: {
               type: Type.OBJECT,
               properties: {
                 week: { type: Type.STRING },
                 task: { type: Type.STRING },
-                details: { type: Type.ARRAY, maxItems: 3, items: { type: Type.STRING } }
+                details: { type: Type.ARRAY, items: { type: Type.STRING } }
               }
             }
           },
           resources: {
             type: Type.ARRAY,
-            maxItems: 3,
             items: {
               type: Type.OBJECT,
               properties: {
@@ -163,27 +153,30 @@ export async function generateProjectDeepDive(summary: ProjectSummary, prefs: Us
               }
             }
           },
-          vivaPrep: {
-            type: Type.OBJECT,
+          vivaPrep: { 
+            type: Type.OBJECT, 
             properties: {
-              questions: { type: Type.ARRAY, maxItems: 4, items: { type: Type.STRING } },
-              concepts: { type: Type.ARRAY, maxItems: 4, items: { type: Type.STRING } },
-              mistakes: { type: Type.ARRAY, maxItems: 3, items: { type: Type.STRING } },
-              evaluatorExpectations: { type: Type.ARRAY, maxItems: 3, items: { type: Type.STRING } }
+              questions: { type: Type.ARRAY, items: { type: Type.STRING } },
+              concepts: { type: Type.ARRAY, items: { type: Type.STRING } },
+              mistakes: { type: Type.ARRAY, items: { type: Type.STRING } },
+              evaluatorExpectations: { type: Type.ARRAY, items: { type: Type.STRING } }
             }
           },
-          presentationTips: { type: Type.ARRAY, maxItems: 3, items: { type: Type.STRING } },
+          presentationTips: { type: Type.ARRAY, items: { type: Type.STRING } },
           closing: { type: Type.STRING }
         },
-        required: ["title", "intro", "fullDescription", "techStack", "roadmap", "vivaPrep", "closing"]
+        required: [
+          "title",
+          "intro",
+          "fullDescription",
+          "techStack",
+          "roadmap",
+          "vivaPrep",
+          "closing"
+        ]
       }
     }
   });
 
-  try {
-    return robustJsonParse(response.text);
-  } catch (e) {
-    console.error("Deep Dive JSON Parsing Error:", e);
-    throw new Error("Project architecture is too dense for this node. Please attempt a slightly different project scope.");
-  }
+  return robustJsonParse(response.text);
 }
