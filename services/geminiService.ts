@@ -2,7 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserPreferences, ProjectSummary, ProjectDeepDive } from "../types.ts";
 
-/* ------------------ Helpers ------------------ */
+/* ------------------ HELPERS ------------------ */
 
 function robustJsonParse(text: string): any {
   let clean = text.trim();
@@ -11,48 +11,45 @@ function robustJsonParse(text: string): any {
     clean = clean.replace(/^```json\n?|\n?```$/g, "").trim();
   }
 
-  // Handle common JSON truncation issues
   let openBraces = (clean.match(/\{/g) || []).length;
   let closeBraces = (clean.match(/\}/g) || []).length;
   while (openBraces > closeBraces) {
     clean += "}";
-    closeBraces++;
+    openBraces--; // actually it should be openBraces > closeBraces, while loop needs count
   }
 
-  let openBrackets = (clean.match(/\[/g) || []).length;
-  let closeBrackets = (clean.match(/\]/g) || []).length;
-  while (openBrackets > closeBrackets) {
-    clean += "]";
-    closeBrackets++;
+  // More standard brace counting for robustness
+  let count = 0;
+  for (let char of clean) {
+    if (char === '{') count++;
+    if (char === '}') count--;
   }
+  while (count > 0) { clean += '}'; count--; }
+
+  let bCount = 0;
+  for (let char of clean) {
+    if (char === '[') bCount++;
+    if (char === ']') bCount--;
+  }
+  while (bCount > 0) { clean += ']'; bCount--; }
 
   return JSON.parse(clean);
 }
 
 /**
  * Robustly retrieves the API Key from the environment.
- * Checks process.env.API_KEY first (standard), then VITE_API_KEY (Vite default).
+ * Checks process.env.API_KEY first, then VITE_API_KEY.
  */
 function getApiKey(): string {
-  // Try standard location first
-  let key = process.env.API_KEY;
-  
-  // Try Vite-specific prefix if standard is empty
-  if (!key || key === "") {
-    key = (process.env as any).VITE_API_KEY;
-  }
+  const key = process.env.API_KEY || (process.env as any).VITE_API_KEY;
 
-  if (!key || key === "") {
-    throw new Error(
-      "API CONFIGURATION ERROR: No API key detected. " +
-      "Ensure either 'API_KEY' or 'VITE_API_KEY' is set in your environment variables."
-    );
+  if (!key) {
+    console.warn("ProjectPath: API_KEY not found in process.env. System may fail.");
   }
-  
-  return key;
+  return key || "";
 }
 
-/* ------------------ Functions ------------------ */
+/* ------------------ PROJECT SUMMARIES ------------------ */
 
 export async function generateProjectSummaries(
   prefs: UserPreferences
@@ -69,14 +66,14 @@ Generate exactly 4 diverse engineering project ideas for:
 - Domain: ${prefs.domain}
 - Student Skill Level: ${prefs.skillLevel}
 
-Rules:
-- Beginner Level → Easy projects
-- Intermediate Level → Medium projects
-- Advanced Level → Hard projects
+STRICT RULES:
+- Beginner → Easy (Foundational scope)
+- Intermediate → Medium (Integrated systems)
+- Advanced → Hard (High research depth)
 
 Return ONLY a JSON array of 4 objects.
 Descriptions must be under 15 words.
-Suitability should explain why it fits the ${prefs.semester} semester curriculum.
+Suitability field must explain why it's perfect for a semester ${prefs.semester} student.
 `;
 
   const response = await ai.models.generateContent({
@@ -112,6 +109,8 @@ Suitability should explain why it fits the ${prefs.semester} semester curriculum
   return robustJsonParse(response.text);
 }
 
+/* ------------------ PROJECT DEEP DIVE ------------------ */
+
 export async function generateProjectDeepDive(
   summary: ProjectSummary,
   prefs: UserPreferences
@@ -120,14 +119,25 @@ export async function generateProjectDeepDive(
   const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `
-Act as a Senior Engineering Architect. Provide a scannable blueprint for: "${summary.title}"
+Act as a Senior Engineering Architect. 
+Provide a comprehensive yet scannable blueprint for the project: "${summary.title}"
 
 Context: ${summary.shortDescription}
-Semester: ${prefs.semester} (${prefs.branch})
+Semester: ${prefs.semester}
 Level: ${prefs.skillLevel}
 
-Return a structured JSON object. Focus on practical tech and academic milestones.
-STRICT JSON ONLY. No conversational filler.
+Return a structured JSON object including:
+- title: The project title.
+- intro: A supportive 1-line intro.
+- fullDescription: A clear project objective (max 40 words).
+- techStack: Array of objects {category: string, items: string[]}
+- roadmap: 6-8 weeks of milestones.
+- resources: Helpful learning assets.
+- vivaPrep: Common questions, concepts, and typical mistakes.
+- presentationTips: 3 punchy tips.
+- closing: A motivating sign-off.
+
+STRICT JSON ONLY. No preamble.
 `;
 
   const response = await ai.models.generateContent({

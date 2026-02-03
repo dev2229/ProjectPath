@@ -9,10 +9,10 @@
     <script>
       window.global = window;
       // Initialize window.process safely. 
-      // Do NOT overwrite existing process.env.API_KEY if it's already defined.
+      // Only define it if it doesn't exist, and preserve existing env if it does.
       if (typeof window.process === 'undefined') {
         window.process = { env: {} };
-      } else if (typeof window.process.env === 'undefined') {
+      } else if (!window.process.env) {
         window.process.env = {};
       }
     </script>
