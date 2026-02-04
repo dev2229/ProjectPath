@@ -30,13 +30,24 @@ function robustJsonParse(text: string): any {
 }
 
 /**
+ * Ensures the GoogleGenAI instance is created with the most recent API key.
+ * Throws a specific error if the key is missing to trigger the UI picker.
+ */
+function getAiClient(): GoogleGenAI {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === "undefined") {
+    throw new Error("API_KEY_MISSING");
+  }
+  return new GoogleGenAI({ apiKey });
+}
+
+/**
  * Generates 4 tailored project ideas based on student preferences.
  */
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
-  // Initialize SDK with required process.env.API_KEY
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
 
   const prompt = `
 You are a Senior Engineering Project Mentor. Generate 4 unique project ideas for a student with these details:
@@ -55,7 +66,7 @@ Return exactly 4 ideas in a JSON array.
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview", // Flash is perfect for quick idea generation
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -88,7 +99,7 @@ export async function generateProjectDeepDive(
   summary: ProjectSummary,
   prefs: UserPreferences
 ): Promise<ProjectDeepDive> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiClient();
 
   const prompt = `
 Act as a Senior Project Architect. Provide a full technical blueprint for the project: "${summary.title}".
@@ -108,7 +119,7 @@ Return a JSON object containing:
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-pro-preview", // Pro model is used for complex reasoning/roadmapping
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
