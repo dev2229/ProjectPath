@@ -20,10 +20,26 @@ const App: React.FC = () => {
   const [selectedDetail, setSelectedDetail] = useState<ProjectDeepDive | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Seamlessly checks for an API key before performing any AI operations.
+   * If missing, it opens the system dialog.
+   */
+  const ensureAccess = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio) {
+      const hasKey = await aistudio.hasSelectedApiKey();
+      if (!hasKey && !process.env.API_KEY) {
+        await aistudio.openSelectKey();
+        // Per instructions: assume success and proceed to prevent race conditions.
+      }
+    }
+  };
+
   const handleFormSubmit = async (newPrefs: UserPreferences) => {
     setIsLoading(true);
     setError(null);
     try {
+      await ensureAccess();
       setPrefs(newPrefs);
       const projectList = await generateProjectSummaries(newPrefs);
       setSummaries(projectList);
@@ -31,8 +47,10 @@ const App: React.FC = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error(err);
-      if (err.message?.includes("API_KEY") || err.message?.includes("API key")) {
-        setError("API Key Error: System environment variable not found. Please refresh the environment or ensure the API key is properly configured.");
+      if (err.message?.includes("API_KEY") || err.message?.includes("403") || err.message?.includes("not found")) {
+        setError("API Connection Required: Please ensure you have selected a valid API Key from a paid GCP project. (ai.google.dev/gemini-api/docs/billing)");
+        // Re-open selector for convenience if it's a known key error
+        (window as any).aistudio?.openSelectKey();
       } else {
         setError(err.message || 'Connection disrupted. Unable to retrieve project blueprints.');
       }
@@ -46,6 +64,7 @@ const App: React.FC = () => {
     setIsLoadingDetail(true);
     setError(null);
     try {
+      await ensureAccess();
       const detail = await generateProjectDeepDive(summary, prefs);
       setSelectedDetail(detail);
       setView(AppView.DETAIL);
@@ -80,7 +99,7 @@ const App: React.FC = () => {
       <div className="horizon-line"></div>
       
       <div className="relative z-10 flex flex-col flex-grow">
-        {/* Navigation Bar Branding */}
+        {/* Simple Navigation branding - No buttons */}
         <nav className="flex items-center justify-center px-8 py-8 md:py-12 max-w-7xl mx-auto w-full">
           <div 
             className="text-4xl md:text-5xl font-black tracking-tighter text-white cursor-pointer select-none transition-transform hover:scale-105" 

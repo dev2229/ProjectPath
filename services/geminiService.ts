@@ -35,6 +35,7 @@ function robustJsonParse(text: string): any {
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
+  // Always initialize with latest apiKey
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
