@@ -21,38 +21,45 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Seamlessly checks for an API key before performing any AI operations.
-   * If missing, it opens the system dialog.
+   * Pre-flight check to ensure the environment has a key.
+   * Triggers openSelectKey if missing.
    */
-  const ensureAccess = async () => {
+  const preflightKeyCheck = async (): Promise<boolean> => {
     const aistudio = (window as any).aistudio;
     if (aistudio) {
       const hasKey = await aistudio.hasSelectedApiKey();
       if (!hasKey && !process.env.API_KEY) {
         await aistudio.openSelectKey();
-        // Per instructions: assume success and proceed to prevent race conditions.
+        return false; 
       }
     }
+    return true;
   };
 
   const handleFormSubmit = async (newPrefs: UserPreferences) => {
     setIsLoading(true);
     setError(null);
     try {
-      await ensureAccess();
+      const isReady = await preflightKeyCheck();
+      if (!isReady) {
+        setIsLoading(false);
+        return;
+      }
+
       setPrefs(newPrefs);
       const projectList = await generateProjectSummaries(newPrefs);
       setSummaries(projectList);
       setView(AppView.LIST);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      console.error(err);
-      if (err.message?.includes("API_KEY") || err.message?.includes("403") || err.message?.includes("not found")) {
-        setError("API Connection Required: Please ensure you have selected a valid API Key from a paid GCP project. (ai.google.dev/gemini-api/docs/billing)");
-        // Re-open selector for convenience if it's a known key error
+      console.error("ProjectPath Error:", err);
+      
+      const errMsg = err.message || "";
+      if (errMsg.includes("API_KEY_MISSING") || errMsg.includes("403") || errMsg.includes("Requested entity was not found")) {
+        setError("API CONFIGURATION REQUIRED: Please select an API Key from a paid GCP project with billing enabled. (ai.google.dev/gemini-api/docs/billing)");
         (window as any).aistudio?.openSelectKey();
       } else {
-        setError(err.message || 'Connection disrupted. Unable to retrieve project blueprints.');
+        setError(errMsg || 'Network disruption in architectural engine. Please retry.');
       }
     } finally {
       setIsLoading(false);
@@ -64,14 +71,19 @@ const App: React.FC = () => {
     setIsLoadingDetail(true);
     setError(null);
     try {
-      await ensureAccess();
+      const isReady = await preflightKeyCheck();
+      if (!isReady) {
+        setIsLoadingDetail(false);
+        return;
+      }
+
       const detail = await generateProjectDeepDive(summary, prefs);
       setSelectedDetail(detail);
       setView(AppView.DETAIL);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Initialization failed. Malformed project architectural data.');
+      setError(err.message || 'Blueprint initialization failed.');
     } finally {
       setIsLoadingDetail(false);
     }
@@ -99,7 +111,6 @@ const App: React.FC = () => {
       <div className="horizon-line"></div>
       
       <div className="relative z-10 flex flex-col flex-grow">
-        {/* Simple Navigation branding - No buttons */}
         <nav className="flex items-center justify-center px-8 py-8 md:py-12 max-w-7xl mx-auto w-full">
           <div 
             className="text-4xl md:text-5xl font-black tracking-tighter text-white cursor-pointer select-none transition-transform hover:scale-105" 
@@ -109,7 +120,6 @@ const App: React.FC = () => {
           </div>
         </nav>
 
-        {/* Header Section */}
         <header className="pt-4 pb-16 px-6 text-center shrink-0">
           <div className="inline-flex items-center px-5 py-2 bg-orange-500/10 border border-orange-500/20 text-[#ff5c00] text-[11px] font-black uppercase tracking-[0.4em] rounded-full mb-10 backdrop-blur-md animate-in fade-in slide-in-from-top-4">
             <span className="flex h-2.5 w-2.5 rounded-full bg-[#ff5c00] mr-3 animate-pulse"></span>
@@ -126,15 +136,17 @@ const App: React.FC = () => {
         </header>
 
         <main className="container mx-auto px-6 pb-40 flex-grow">
-          {/* Global Error Notification */}
           {error && (
-            <div className="max-w-4xl mx-auto mb-16 p-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl text-center font-bold animate-in slide-in-from-top-4 sticky top-4 z-50 backdrop-blur-md">
-              <div className="flex items-center justify-center gap-4">
-                <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  {error}
+            <div className="max-w-4xl mx-auto mb-16 p-8 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-3xl text-center font-bold animate-in slide-in-from-top-4 sticky top-4 z-50 backdrop-blur-xl shadow-2xl">
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex items-center gap-4">
+                  <svg className="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  <span className="text-lg tracking-tight">{error}</span>
                 </div>
-                <button onClick={() => setError(null)} className="ml-4 text-rose-300/50 hover:text-rose-300 transition-colors">✕</button>
+                <div className="flex gap-4">
+                  <button onClick={() => (window as any).aistudio?.openSelectKey()} className="px-6 py-2 bg-rose-500 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-colors">Select Key</button>
+                  <button onClick={() => setError(null)} className="px-6 py-2 bg-white/5 text-rose-400 rounded-full text-xs font-black uppercase tracking-widest border border-rose-500/20 hover:bg-white/10 transition-colors">Dismiss</button>
+                </div>
               </div>
             </div>
           )}
@@ -167,7 +179,6 @@ const App: React.FC = () => {
           )}
         </main>
 
-        {/* Global Project Initialization Overlay */}
         {isLoadingDetail && (
           <div className="fixed inset-0 bg-black z-[10000] flex items-center justify-center p-6 animate-in fade-in duration-500">
             <div className="bg-[#0a0a0a] rounded-[3rem] p-16 text-center max-w-md w-full shadow-[0_0_100px_rgba(255,92,0,0.2)] border border-white/10 animate-in zoom-in-95">

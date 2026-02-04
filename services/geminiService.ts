@@ -25,8 +25,19 @@ function robustJsonParse(text: string): any {
     return JSON.parse(clean);
   } catch (e) {
     console.error("JSON Parse Error. Raw content:", text);
-    throw new Error("The AI response was malformed. Please refine your parameters and try again.");
+    throw new Error("The blueprint was partially generated but could not be finalized. Please refine your parameters.");
   }
+}
+
+/**
+ * Validates the API key before attempting an AI call.
+ */
+function getAIInstance() {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
+    throw new Error("API_KEY_MISSING");
+  }
+  return new GoogleGenAI({ apiKey });
 }
 
 /**
@@ -35,8 +46,7 @@ function robustJsonParse(text: string): any {
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
-  // Always initialize with latest apiKey
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIInstance();
 
   const prompt = `
 You are a Senior Engineering Project Mentor. Generate 4 unique project ideas for a student with these details:
@@ -87,7 +97,7 @@ export async function generateProjectDeepDive(
   summary: ProjectSummary,
   prefs: UserPreferences
 ): Promise<ProjectDeepDive> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIInstance();
 
   const prompt = `
 Act as a Senior Project Architect. Provide a full technical blueprint for the project: "${summary.title}".
