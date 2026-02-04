@@ -31,7 +31,7 @@ function robustJsonParse(text: string): any {
 
 /**
  * Ensures the GoogleGenAI instance is created with the most recent API key.
- * Throws a specific error if the key is missing to trigger the UI picker.
+ * Throws a specific error if the key is missing.
  */
 function getAiClient(): GoogleGenAI {
   const apiKey = process.env.API_KEY;
@@ -43,6 +43,7 @@ function getAiClient(): GoogleGenAI {
 
 /**
  * Generates 4 tailored project ideas based on student preferences.
+ * Now strictly enforces difficulty based on skill level.
  */
 export async function generateProjectSummaries(
   prefs: UserPreferences
@@ -54,13 +55,17 @@ You are a Senior Engineering Project Mentor. Generate 4 unique project ideas for
 - Semester: ${prefs.semester}
 - Branch: ${prefs.branch}
 - Domain: ${prefs.domain}
-- Skill Level: ${prefs.skillLevel}
+- Student Skill Level: ${prefs.skillLevel}
+
+STRICT DIFFICULTY MAPPING RULE:
+- If Skill Level is "Beginner", ALL 4 projects MUST have difficulty "Easy".
+- If Skill Level is "Intermediate", ALL 4 projects MUST have difficulty "Medium".
+- If Skill Level is "Advanced", ALL 4 projects MUST have difficulty "Hard".
 
 Criteria:
 - Must be academically rigorous for a group of 3-4 students.
-- Should avoid common "beginner" clones unless the skill level is Beginner.
 - Descriptions must be highly professional and under 15 words.
-- Difficulty should be "Easy", "Medium", or "Hard" based on the ${prefs.skillLevel} level.
+- Projects must be relevant to the ${prefs.domain} domain and the ${prefs.branch} branch.
 
 Return exactly 4 ideas in a JSON array.
 `;
@@ -80,7 +85,10 @@ Return exactly 4 ideas in a JSON array.
             id: { type: Type.STRING },
             title: { type: Type.STRING },
             shortDescription: { type: Type.STRING },
-            difficulty: { type: Type.STRING },
+            difficulty: { 
+              type: Type.STRING,
+              description: "Must strictly be Easy if skill is Beginner, Medium if Intermediate, Hard if Advanced."
+            },
             suitability: { type: Type.STRING }
           },
           required: ["id", "title", "shortDescription", "difficulty", "suitability"]
@@ -105,6 +113,7 @@ export async function generateProjectDeepDive(
 Act as a Senior Project Architect. Provide a full technical blueprint for the project: "${summary.title}".
 
 Academic Context: Semester ${prefs.semester}, ${prefs.branch}
+Difficulty Level: ${summary.difficulty}
 Description: ${summary.shortDescription}
 
 Return a JSON object containing:
