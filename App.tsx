@@ -20,27 +20,10 @@ const App: React.FC = () => {
   const [selectedDetail, setSelectedDetail] = useState<ProjectDeepDive | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Implicitly handles API Key selection before proceeding with content generation.
-   */
-  const ensureApiKey = async (): Promise<boolean> => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio) {
-      const hasKey = await aistudio.hasSelectedApiKey();
-      if (!hasKey && !process.env.API_KEY) {
-        await aistudio.openSelectKey();
-        // Per instructions, assume success after triggering selection
-        return true;
-      }
-    }
-    return true;
-  };
-
   const handleFormSubmit = async (newPrefs: UserPreferences) => {
     setIsLoading(true);
     setError(null);
     try {
-      await ensureApiKey();
       setPrefs(newPrefs);
       const projectList = await generateProjectSummaries(newPrefs);
       setSummaries(projectList);
@@ -48,8 +31,8 @@ const App: React.FC = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error(err);
-      if (err.message?.includes("API Key") || err.message?.includes("403") || err.message?.includes("not found")) {
-        setError("API Authentication Required. Please ensure you have selected a valid API Key from a paid project. (See: ai.google.dev/gemini-api/docs/billing)");
+      if (err.message?.includes("API_KEY") || err.message?.includes("API key")) {
+        setError("API Key Error: System environment variable not found. Please refresh the environment or ensure the API key is properly configured.");
       } else {
         setError(err.message || 'Connection disrupted. Unable to retrieve project blueprints.');
       }
@@ -63,7 +46,6 @@ const App: React.FC = () => {
     setIsLoadingDetail(true);
     setError(null);
     try {
-      await ensureApiKey();
       const detail = await generateProjectDeepDive(summary, prefs);
       setSelectedDetail(detail);
       setView(AppView.DETAIL);

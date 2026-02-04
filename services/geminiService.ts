@@ -25,7 +25,7 @@ function robustJsonParse(text: string): any {
     return JSON.parse(clean);
   } catch (e) {
     console.error("JSON Parse Error. Raw content:", text);
-    throw new Error("The AI returned a blueprint that was too complex to parse. Please try adjusting your parameters.");
+    throw new Error("The AI response was malformed. Please refine your parameters and try again.");
   }
 }
 
@@ -35,7 +35,6 @@ function robustJsonParse(text: string): any {
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
-  // Use process.env.API_KEY directly as per SDK requirements
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
@@ -47,9 +46,8 @@ You are a Senior Engineering Project Mentor. Generate 4 unique project ideas for
 
 Criteria:
 - Must be academically rigorous for a group of 3-4 students.
-- Should avoid common "beginner" clones unless the skill level is Beginner.
-- Descriptions must be highly professional and under 15 words.
-- Difficulty should be "Easy", "Medium", or "Hard" based on the ${prefs.skillLevel} level.
+- Descriptions must be professional and under 15 words.
+- Difficulty should be "Easy", "Medium", or "Hard".
 
 Return exactly 4 ideas in a JSON array.
 `;
@@ -96,15 +94,7 @@ Act as a Senior Project Architect. Provide a full technical blueprint for the pr
 Academic Context: Semester ${prefs.semester}, ${prefs.branch}
 Description: ${summary.shortDescription}
 
-Return a JSON object containing:
-1. intro: A 1-line encouraging intro.
-2. fullDescription: A detailed 2-paragraph technical objective.
-3. techStack: Array of categories (Frontend, Backend, etc.) and specific items.
-4. roadmap: A 6-8 week breakdown with tasks and 3 bullet points of detail each.
-5. resources: 3 helpful learning links/titles.
-6. vivaPrep: 5 questions, 5 core concepts, 3 common mistakes, and 4 evaluator expectations.
-7. presentationTips: 3 punchy tips for final demo.
-8. closing: A final 1-line motivating sign-off.
+Return a JSON object containing technical roadmap, tech stack, and viva preparation.
 `;
 
   const response = await ai.models.generateContent({
