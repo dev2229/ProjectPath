@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ProjectForm from './components/ProjectForm.tsx';
 import ProjectList from './components/ProjectList.tsx';
 import ProjectDetail from './components/ProjectDetail.tsx';
-import Button from './components/Button.tsx';
 import { UserPreferences, ProjectSummary, ProjectDeepDive } from './types.ts';
 import { generateProjectSummaries, generateProjectDeepDive } from './services/geminiService.ts';
 
@@ -20,32 +19,6 @@ const App: React.FC = () => {
   const [summaries, setSummaries] = useState<ProjectSummary[]>([]);
   const [selectedDetail, setSelectedDetail] = useState<ProjectDeepDive | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isApiKeyMissing, setIsApiKeyMissing] = useState(false);
-
-  // Initial key check for specialized environments
-  useEffect(() => {
-    const initKeyCheck = async () => {
-      const aistudio = (window as any).aistudio;
-      if (aistudio) {
-        const hasKey = await aistudio.hasSelectedApiKey();
-        if (!hasKey && !process.env.API_KEY) {
-          setIsApiKeyMissing(true);
-        }
-      } else if (!process.env.API_KEY) {
-        setIsApiKeyMissing(true);
-      }
-    };
-    initKeyCheck();
-  }, []);
-
-  const handleConnectKey = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio) {
-      await aistudio.openSelectKey();
-      setIsApiKeyMissing(false);
-      setError(null);
-    }
-  };
 
   const handleFormSubmit = async (newPrefs: UserPreferences) => {
     setIsLoading(true);
@@ -58,12 +31,7 @@ const App: React.FC = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error(err);
-      if (err.message === "API_KEY_MISSING" || err.message.includes("API Key")) {
-        setIsApiKeyMissing(true);
-        setError("API Connection Required: Please select an authorized key to proceed.");
-      } else {
-        setError(err.message || 'Connection disrupted. Unable to retrieve project blueprints.');
-      }
+      setError(err.message || 'Connection disrupted. Unable to retrieve project blueprints.');
     } finally {
       setIsLoading(false);
     }
@@ -109,23 +77,13 @@ const App: React.FC = () => {
       
       <div className="relative z-10 flex flex-col flex-grow">
         {/* Navigation Bar Branding */}
-        <nav className="flex items-center justify-between px-8 py-8 md:py-12 max-w-7xl mx-auto w-full">
+        <nav className="flex items-center justify-center px-8 py-8 md:py-12 max-w-7xl mx-auto w-full">
           <div 
             className="text-4xl md:text-5xl font-black tracking-tighter text-white cursor-pointer select-none transition-transform hover:scale-105" 
             onClick={handleBackToForm}
           >
             Project<span className="text-[#ff5c00]">Path</span>
           </div>
-
-          {isApiKeyMissing && (
-            <Button 
-              variant="primary" 
-              onClick={handleConnectKey}
-              className="py-2 px-6 rounded-full text-[10px]"
-            >
-              Connect Key
-            </Button>
-          )}
         </nav>
 
         {/* Header Section */}
@@ -148,19 +106,11 @@ const App: React.FC = () => {
           {/* Global Error Notification */}
           {error && (
             <div className="max-w-4xl mx-auto mb-16 p-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl text-center font-bold animate-in slide-in-from-top-4 sticky top-4 z-50 backdrop-blur-md">
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+              <div className="flex items-center justify-center gap-4">
                 <div className="flex items-center gap-3">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                   {error}
                 </div>
-                {isApiKeyMissing && (
-                  <button 
-                    onClick={handleConnectKey}
-                    className="px-4 py-2 bg-rose-500 text-white rounded-xl text-xs uppercase tracking-widest font-black transition-transform hover:scale-105"
-                  >
-                    Set Key
-                  </button>
-                )}
                 <button onClick={() => setError(null)} className="ml-4 text-rose-300/50 hover:text-rose-300 transition-colors">✕</button>
               </div>
             </div>
