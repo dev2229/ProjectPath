@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import ProjectForm from './components/ProjectForm.tsx';
 import ProjectList from './components/ProjectList.tsx';
@@ -93,9 +92,9 @@ const App: React.FC = () => {
             <span className="flex h-2.5 w-2.5 rounded-full bg-[#ff5c00] mr-3 animate-pulse"></span>
             Strategic Engineering Guidance
           </div>
-          <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black text-white mb-10 tracking-tighter leading-[0.82] drop-shadow-2xl max-w-5xl mx-auto">
-            BUILD PROJECTS<br/>
-            THAT <span className="text-[#ff5c00]">MATTER</span>
+          <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black text-white mb-10 tracking-tighter leading-[0.82] drop-shadow-2xl max-w-5xl mx-auto uppercase">
+            Build projects with clarity,<br/>
+            not <span className="text-[#ff5c00]">confusion</span>
           </h1>
           <p className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed mt-4">
             Architect your academic journey with precision. 
