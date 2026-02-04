@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ProjectSummary } from '../types.ts';
 import Card from './Card.tsx';
@@ -16,7 +15,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ summaries, onSelect, onBack, 
     <div className="space-y-20 animate-in fade-in slide-in-from-bottom-12 duration-1000 max-w-7xl mx-auto pb-24 relative z-10">
       <div className="text-center space-y-6">
         <h2 className="text-5xl font-black text-white tracking-tighter">Exploration Results</h2>
-        <p className="text-slate-400 text-xl font-medium max-w-2xl mx-auto">4 specialized engineering modules identified for your criteria.</p>
+        <p className="text-slate-400 text-xl font-medium max-w-2xl mx-auto">Specialized engineering modules identified for your criteria.</p>
         <button onClick={onBack} className="text-[#ff5c00] font-black uppercase tracking-widest text-xs hover:text-white transition-all flex items-center mx-auto group">
           <svg className="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           Return to home page

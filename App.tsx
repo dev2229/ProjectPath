@@ -22,7 +22,8 @@ const App: React.FC = () => {
 
   /**
    * Pre-flight check to ensure the environment has a key.
-   * Triggers openSelectKey if missing.
+   * COMPLIANCE: If key is missing, triggers openSelectKey but returns true 
+   * to continue the flow and avoid race conditions.
    */
   const preflightKeyCheck = async (): Promise<boolean> => {
     const aistudio = (window as any).aistudio;
@@ -30,7 +31,7 @@ const App: React.FC = () => {
       const hasKey = await aistudio.hasSelectedApiKey();
       if (!hasKey && !process.env.API_KEY) {
         await aistudio.openSelectKey();
-        return false; 
+        // Mandatory compliance: proceed anyway as the key is injected immediately
       }
     }
     return true;
@@ -40,26 +41,22 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const isReady = await preflightKeyCheck();
-      if (!isReady) {
-        setIsLoading(false);
-        return;
-      }
-
+      await preflightKeyCheck();
       setPrefs(newPrefs);
       const projectList = await generateProjectSummaries(newPrefs);
       setSummaries(projectList);
       setView(AppView.LIST);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      console.error("ProjectPath Error:", err);
+      console.error("ProjectPath Critical Failure:", err);
       
       const errMsg = err.message || "";
-      if (errMsg.includes("API_KEY_MISSING") || errMsg.includes("403") || errMsg.includes("Requested entity was not found")) {
-        setError("API CONFIGURATION REQUIRED: Please select an API Key from a paid GCP project with billing enabled. (ai.google.dev/gemini-api/docs/billing)");
+      // Handle 500/Rpc errors which often mean project context/billing issues
+      if (errMsg.includes("500") || errMsg.includes("UNKNOWN") || errMsg.includes("xhr error") || errMsg.includes("API_KEY_MISSING")) {
+        setError("SYSTEM AUTHENTICATION FAILED: The architectural engine requires a valid API Key from a paid GCP project. Please verify your project billing at ai.google.dev/gemini-api/docs/billing and try selecting the key again.");
         (window as any).aistudio?.openSelectKey();
       } else {
-        setError(errMsg || 'Network disruption in architectural engine. Please retry.');
+        setError(errMsg || 'Network disruption in architectural engine. Please check your connection.');
       }
     } finally {
       setIsLoading(false);
@@ -71,19 +68,20 @@ const App: React.FC = () => {
     setIsLoadingDetail(true);
     setError(null);
     try {
-      const isReady = await preflightKeyCheck();
-      if (!isReady) {
-        setIsLoadingDetail(false);
-        return;
-      }
-
+      await preflightKeyCheck();
       const detail = await generateProjectDeepDive(summary, prefs);
       setSelectedDetail(detail);
       setView(AppView.DETAIL);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Blueprint initialization failed.');
+      const errMsg = err.message || "";
+      if (errMsg.includes("500") || errMsg.includes("xhr error")) {
+        setError("AUTHENTICATION ERROR: The selected project context is invalid or lacks access. Please re-select your key.");
+        (window as any).aistudio?.openSelectKey();
+      } else {
+        setError(err.message || 'Blueprint initialization failed.');
+      }
     } finally {
       setIsLoadingDetail(false);
     }
@@ -138,14 +136,14 @@ const App: React.FC = () => {
         <main className="container mx-auto px-6 pb-40 flex-grow">
           {error && (
             <div className="max-w-4xl mx-auto mb-16 p-8 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-3xl text-center font-bold animate-in slide-in-from-top-4 sticky top-4 z-50 backdrop-blur-xl shadow-2xl">
-              <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-6">
                 <div className="flex items-center gap-4">
-                  <svg className="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  <span className="text-lg tracking-tight">{error}</span>
+                  <svg className="w-10 h-10 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  <span className="text-lg tracking-tight leading-relaxed">{error}</span>
                 </div>
                 <div className="flex gap-4">
-                  <button onClick={() => (window as any).aistudio?.openSelectKey()} className="px-6 py-2 bg-rose-500 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-colors">Select Key</button>
-                  <button onClick={() => setError(null)} className="px-6 py-2 bg-white/5 text-rose-400 rounded-full text-xs font-black uppercase tracking-widest border border-rose-500/20 hover:bg-white/10 transition-colors">Dismiss</button>
+                  <button onClick={() => (window as any).aistudio?.openSelectKey()} className="px-8 py-3 bg-rose-500 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg hover:shadow-rose-500/20 active:scale-95">Re-Select Key</button>
+                  <button onClick={() => setError(null)} className="px-8 py-3 bg-white/5 text-rose-400 rounded-full text-xs font-black uppercase tracking-widest border border-rose-500/20 hover:bg-white/10 transition-colors">Dismiss</button>
                 </div>
               </div>
             </div>
@@ -155,7 +153,7 @@ const App: React.FC = () => {
             <div id="project-form-container" className="max-w-4xl mx-auto bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-[3.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.6)] p-10 sm:p-14 md:p-20 border border-white/10 animate-in zoom-in-95 duration-700">
               <div className="mb-16 text-center">
                 <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">Project Configuration</h2>
-                <p className="text-slate-400 font-medium text-lg">Input your parameters to generate 4 actionable engineering solutions.</p>
+                <p className="text-slate-400 font-medium text-lg">Input your parameters to generate actionable engineering solutions.</p>
               </div>
               
               <ProjectForm onSubmit={handleFormSubmit} isLoading={isLoading} />
