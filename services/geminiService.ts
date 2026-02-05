@@ -1,13 +1,14 @@
 import { UserPreferences, ProjectSummary, ProjectDeepDive, SkillLevel } from "../types.ts";
 
 /**
- * Robustly parses and repairs JSON from a string.
+ * Robustly parses and repairs JSON from a string, handling potential AI formatting noise.
  */
 function robustJsonParse(text: string): any {
   if (!text) throw new Error("The engine returned an empty response.");
   
   let clean = text.trim();
 
+  // Strip Markdown markers if the model ignored the JSON output instruction
   if (clean.startsWith("```")) {
     clean = clean.replace(/^```json\s*|\s*```$/g, "").replace(/^```\s*|\s*```$/g, "");
   }
@@ -16,6 +17,7 @@ function robustJsonParse(text: string): any {
     return JSON.parse(clean);
   } catch (e) {
     console.error("JSON Parse Error. Raw content:", text);
+    // Attempt basic brace/bracket repair for truncated streams
     let repair = clean;
     const openBraces = (repair.match(/\{/g) || []).length;
     const closeBraces = (repair.match(/\}/g) || []).length;
@@ -28,15 +30,15 @@ function robustJsonParse(text: string): any {
     try {
       return JSON.parse(repair);
     } catch (e2) {
-      throw new Error("Architectural data was received but malformed. Please try again.");
+      throw new Error("The blueprint data was received but malformed. Please re-generate.");
     }
   }
 }
 
 /**
- * Generic caller for the server-side API.
+ * Communicates with the secure API folder endpoint.
  */
-async function callGemini(prompt: string, config: any = {}): Promise<string> {
+async function callGeminiApi(prompt: string, config: any = {}): Promise<string> {
   const response = await fetch('/api/gemini', {
     method: 'POST',
     headers: {
@@ -47,7 +49,7 @@ async function callGemini(prompt: string, config: any = {}): Promise<string> {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to communicate with the architectural engine.");
+    throw new Error(errorData.message || `API Error: ${response.status}`);
   }
 
   const result = await response.json();
@@ -69,19 +71,19 @@ export async function generateProjectSummaries(
   const targetDifficulty = getTargetDifficulty(prefs.skillLevel);
 
   const prompt = `
-You are a Senior Engineering Project Mentor. 
-Generate exactly 4 unique project ideas for an engineering student:
-- Semester: ${prefs.semester}
+Generate exactly 4 unique engineering project ideas for:
 - Branch: ${prefs.branch}
 - Domain: ${prefs.domain}
 - Skill Level: ${prefs.skillLevel}
+- Current Semester: ${prefs.semester}
 
-CRITICAL: Set the "difficulty" of ALL projects to strictly "${targetDifficulty}".
-
-Output ONLY a JSON array of 4 objects with: id, title, shortDescription (max 12 words), difficulty (must be "${targetDifficulty}"), and suitability.
+Rules:
+1. Difficulty MUST be strictly "${targetDifficulty}".
+2. Suitability must explain why this fits a ${prefs.skillLevel} student.
 `;
 
-  const responseText = await callGemini(prompt, {
+  const responseText = await callGeminiApi(prompt, {
+    model: 'gemini-3-flash-preview',
     responseMimeType: "application/json",
     responseSchema: {
       type: "ARRAY",
@@ -91,7 +93,7 @@ Output ONLY a JSON array of 4 objects with: id, title, shortDescription (max 12 
           id: { type: "STRING" },
           title: { type: "STRING" },
           shortDescription: { type: "STRING" },
-          difficulty: { type: "STRING" },
+          difficulty: { type: "STRING", enum: ["Easy", "Medium", "Hard"] },
           suitability: { type: "STRING" }
         },
         required: ["id", "title", "shortDescription", "difficulty", "suitability"]
@@ -108,15 +110,71 @@ export async function generateProjectDeepDive(
   prefs: UserPreferences
 ): Promise<ProjectDeepDive> {
   const prompt = `
-Act as a Senior Project Architect. Provide a full technical blueprint for: "${summary.title}".
-Context: ${prefs.branch} Engineering, Semester ${prefs.semester}. Difficulty: ${summary.difficulty}.
+Provide a comprehensive technical roadmap for the project: "${summary.title}".
+Student Profile: ${prefs.branch}, Sem ${prefs.semester}, ${summary.difficulty} difficulty.
 
-Return a JSON object with: title, intro, fullDescription, techStack (category/items), roadmap (week/task/details), resources (title/type/link), vivaPrep (questions, concepts, mistakes, evaluatorExpectations), presentationTips, and closing.
+Deliver a detailed blueprint including tech stack, 8-week roadmap, viva questions, and presentation strategy.
 `;
 
-  const responseText = await callGemini(prompt, {
-    model: 'gemini-3-pro-preview', // Use pro for deep dives
-    responseMimeType: "application/json"
+  const responseText = await callGeminiApi(prompt, {
+    model: 'gemini-3-pro-preview',
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: "OBJECT",
+      properties: {
+        title: { type: "STRING" },
+        intro: { type: "STRING" },
+        fullDescription: { type: "STRING" },
+        techStack: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              category: { type: "STRING" },
+              items: { type: "ARRAY", items: { type: "STRING" } }
+            },
+            required: ["category", "items"]
+          }
+        },
+        roadmap: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              week: { type: "STRING" },
+              task: { type: "STRING" },
+              details: { type: "ARRAY", items: { type: "STRING" } }
+            },
+            required: ["week", "task", "details"]
+          }
+        },
+        resources: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              title: { type: "STRING" },
+              type: { type: "STRING" },
+              link: { type: "STRING" }
+            },
+            required: ["title", "type", "link"]
+          }
+        },
+        vivaPrep: {
+          type: "OBJECT",
+          properties: {
+            questions: { type: "ARRAY", items: { type: "STRING" } },
+            concepts: { type: "ARRAY", items: { type: "STRING" } },
+            mistakes: { type: "ARRAY", items: { type: "STRING" } },
+            evaluatorExpectations: { type: "ARRAY", items: { type: "STRING" } }
+          },
+          required: ["questions", "concepts", "mistakes", "evaluatorExpectations"]
+        },
+        presentationTips: { type: "ARRAY", items: { type: "STRING" } },
+        closing: { type: "STRING" }
+      },
+      required: ["title", "intro", "fullDescription", "techStack", "roadmap", "vivaPrep", "presentationTips", "closing"]
+    }
   });
 
   return robustJsonParse(responseText);

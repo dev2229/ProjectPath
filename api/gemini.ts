@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 /**
- * Serverless function for Vercel to handle Gemini API requests securely.
+ * Serverless function to handle Gemini API requests securely.
  */
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -17,18 +17,22 @@ export default async function handler(req: any, res: any) {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // Determine model based on task if needed, default to gemini-3-flash-preview
-    const model = config?.model || 'gemini-3-flash-preview';
+    // Default to flash for summaries, pro for deep dives
+    const modelName = config?.model || 'gemini-3-flash-preview';
 
     const response = await ai.models.generateContent({
-      model: model,
+      model: modelName,
       contents: prompt,
       config: {
         responseMimeType: config?.responseMimeType || "application/json",
         responseSchema: config?.responseSchema,
-        temperature: config?.temperature || 1,
+        temperature: config?.temperature ?? 0.7,
       },
     });
+
+    if (!response || !response.text) {
+      throw new Error("Empty response from AI model");
+    }
 
     return res.status(200).json({ text: response.text });
   } catch (error: any) {

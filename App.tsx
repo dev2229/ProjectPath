@@ -31,7 +31,7 @@ const App: React.FC = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error("Critical Engine Failure:", err);
-      setError(err.message || "The project engine encountered a disruption. Please try again.");
+      setError(err.message || "The architectural engine encountered a disruption. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +48,7 @@ const App: React.FC = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error("Blueprint Failure:", err);
-      setError("Failed to initialize project blueprint. Please verify your connection.");
+      setError(`Construction Error: ${err.message || "Failed to initialize blueprint."}`);
     } finally {
       setIsLoadingDetail(false);
     }
