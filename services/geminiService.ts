@@ -3,6 +3,7 @@ import { UserPreferences, ProjectSummary, ProjectDeepDive, SkillLevel } from "..
 
 /**
  * Robustly parses and repairs JSON from Gemini model output.
+ * Handles markdown code blocks and ensures the output is valid.
  */
 function robustJsonParse(text: string): any {
   if (!text) throw new Error("The model returned an empty response.");
@@ -11,23 +12,28 @@ function robustJsonParse(text: string): any {
 
   // Strip Markdown markers if present
   if (clean.startsWith("```")) {
-    clean = clean.replace(/^```json\s*|\s*```$/g, "");
+    clean = clean.replace(/^```json\s*|\s*```$/g, "").replace(/^```\s*|\s*```$/g, "");
   }
-
-  // Simple auto-balancing for truncated JSON responses
-  let openBraces = (clean.match(/\{/g) || []).length;
-  let closeBraces = (clean.match(/\}/g) || []).length;
-  while (openBraces > closeBraces) { clean += "}"; closeBraces++; }
-
-  let openBrackets = (clean.match(/\[/g) || []).length;
-  let closeBrackets = (clean.match(/\]/g) || []).length;
-  while (openBrackets > closeBrackets) { clean += "]"; closeBrackets++; }
 
   try {
     return JSON.parse(clean);
   } catch (e) {
     console.error("JSON Parse Error. Raw content:", text);
-    throw new Error("Architectural data was received but malformed. Please try again.");
+    // Simple repair for truncated JSON
+    let repair = clean;
+    const openBraces = (repair.match(/\{/g) || []).length;
+    const closeBraces = (repair.match(/\}/g) || []).length;
+    for (let i = 0; i < openBraces - closeBraces; i++) repair += "}";
+    
+    const openBrackets = (repair.match(/\[/g) || []).length;
+    const closeBrackets = (repair.match(/\]/g) || []).length;
+    for (let i = 0; i < openBrackets - closeBrackets; i++) repair += "]";
+    
+    try {
+      return JSON.parse(repair);
+    } catch (e2) {
+      throw new Error("Architectural data was received but malformed. Please try again.");
+    }
   }
 }
 
@@ -49,19 +55,29 @@ const getTargetDifficulty = (level: SkillLevel): string => {
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API_KEY_MISSING");
+
+  const ai = new GoogleGenAI({ apiKey });
   const targetDifficulty = getTargetDifficulty(prefs.skillLevel);
 
   const prompt = `
-You are a Senior Engineering Project Mentor. Generate 4 unique project ideas for an engineering student:
+You are a Senior Engineering Project Mentor. 
+Generate exactly 4 unique project ideas for an engineering student with the following profile:
 - Semester: ${prefs.semester}
 - Branch: ${prefs.branch}
 - Domain: ${prefs.domain}
 - Skill Level: ${prefs.skillLevel}
 
-CRITICAL: Since the user is "${prefs.skillLevel}", set "difficulty" of ALL 4 projects to strictly "${targetDifficulty}".
+CRITICAL REQUIREMENT:
+Since the user is at the "${prefs.skillLevel}" skill level, you MUST set the "difficulty" of ALL projects to strictly "${targetDifficulty}".
 
-Return a JSON array of 4 objects. Each must have: id, title, shortDescription (max 12 words), difficulty (MUST be "${targetDifficulty}"), and suitability.
+Output ONLY a JSON array of 4 objects. Each object must contain:
+- id: string (unique identifier)
+- title: string
+- shortDescription: string (max 12 words)
+- difficulty: string (must be "${targetDifficulty}")
+- suitability: string (why it fits this student)
 `;
 
   const response = await ai.models.generateContent({
@@ -88,7 +104,8 @@ Return a JSON array of 4 objects. Each must have: id, title, shortDescription (m
     }
   });
 
-  return robustJsonParse(response.text);
+  const parsed = robustJsonParse(response.text);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 /**
@@ -98,13 +115,25 @@ export async function generateProjectDeepDive(
   summary: ProjectSummary,
   prefs: UserPreferences
 ): Promise<ProjectDeepDive> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API_KEY_MISSING");
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `
-Act as a Senior Project Architect. Provide a full technical blueprint for: "${summary.title}".
-Context: ${prefs.branch} Engineering, Semester ${prefs.semester}. Difficulty: ${summary.difficulty}.
+Act as a Senior Project Architect. Provide a full technical blueprint for the project: "${summary.title}".
+Context: ${prefs.branch} Engineering, Semester ${prefs.semester}. Difficulty Level: ${summary.difficulty}.
 
-Return a JSON object with: title, intro, fullDescription, techStack (category/items), roadmap (week/task/details), resources (title/type/link), vivaPrep (questions, concepts, mistakes, evaluatorExpectations), presentationTips, and closing.
+Return a JSON object with:
+- title: string
+- intro: string
+- fullDescription: string
+- techStack: array of { category: string, items: string[] }
+- roadmap: array of { week: string, task: string, details: string[] }
+- resources: array of { title: string, type: string, link: string }
+- vivaPrep: object { questions: string[], concepts: string[], mistakes: string[], evaluatorExpectations: string[] }
+- presentationTips: string[]
+- closing: string
 `;
 
   const response = await ai.models.generateContent({
