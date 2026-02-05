@@ -3,6 +3,7 @@ import { UserPreferences, ProjectSummary, ProjectDeepDive, SkillLevel } from "..
 
 /**
  * Robustly parses and repairs JSON from Gemini model output.
+ * Handles markdown code blocks and truncated responses.
  */
 function robustJsonParse(text: string): any {
   let clean = text.trim();
@@ -31,6 +32,8 @@ function robustJsonParse(text: string): any {
 
 /**
  * Validates the API key before attempting an AI call.
+ * IMPORTANT: Always create a new instance right before making an API call 
+ * to ensure it uses the most up-to-date API key from the environment/dialog.
  */
 function getAIInstance() {
   const apiKey = process.env.API_KEY;
@@ -41,7 +44,7 @@ function getAIInstance() {
 }
 
 /**
- * Maps SkillLevel to strict Difficulty labels.
+ * Maps SkillLevel to strict Difficulty labels for the prompt.
  */
 const getTargetDifficulty = (level: SkillLevel): string => {
   switch (level) {

@@ -29,9 +29,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ summaries, onSelect, onBack, 
             className="group flex flex-col h-full bg-[#0a0a0a]/40 border border-white/5 hover:border-orange-500/30 transition-all duration-500 rounded-[2rem] p-8 overflow-hidden relative shadow-2xl cursor-pointer"
             onClick={() => onSelect(project)}
           >
-            {/* Transparent click target to ensure the entire card is clickable */}
             <div className="absolute inset-0 z-20 cursor-pointer" aria-hidden="true"></div>
-
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-orange-500/20 transition-all duration-700"></div>
 
             <div className="mb-6 flex justify-between items-start relative z-10">
@@ -70,11 +68,6 @@ const ProjectList: React.FC<ProjectListProps> = ({ summaries, onSelect, onBack, 
             </div>
           </Card>
         ))}
-        {(!summaries || summaries.length === 0) && !isLoadingDetail && (
-           <div className="col-span-full py-20 text-center text-slate-500 font-bold uppercase tracking-widest text-sm">
-             No project blueprints detected.
-           </div>
-        )}
       </div>
     </div>
   );
