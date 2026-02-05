@@ -49,6 +49,9 @@ async function callGeminiApi(prompt: string, config: any = {}): Promise<string> 
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    if (response.status === 429) {
+      throw new Error("The engine is currently overloaded (Quota Exceeded). Please wait 30 seconds and try again.");
+    }
     throw new Error(errorData.message || `API Error: ${response.status}`);
   }
 
@@ -117,7 +120,7 @@ Deliver a detailed blueprint including tech stack, 8-week roadmap, viva question
 `;
 
   const responseText = await callGeminiApi(prompt, {
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-3-flash-preview', // Switched from Pro to Flash to resolve 429 quota errors
     responseMimeType: "application/json",
     responseSchema: {
       type: "OBJECT",

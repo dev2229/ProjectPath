@@ -17,7 +17,7 @@ export default async function handler(req: any, res: any) {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // Default to flash for summaries, pro for deep dives
+    // Default to flash for all operations to ensure maximum availability and speed
     const modelName = config?.model || 'gemini-3-flash-preview';
 
     const response = await ai.models.generateContent({
@@ -36,9 +36,14 @@ export default async function handler(req: any, res: any) {
 
     return res.status(200).json({ text: response.text });
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    return res.status(error.status || 500).json({ 
-      message: error.message || 'An error occurred during AI generation' 
+    console.error("Gemini API Error details:", JSON.stringify(error, null, 2));
+    
+    // Map status codes if available from the error object
+    const statusCode = error.status || error.statusCode || 500;
+    
+    return res.status(statusCode).json({ 
+      message: error.message || 'An error occurred during AI generation',
+      code: error.code || 'UNKNOWN_ERROR'
     });
   }
 }
