@@ -3,9 +3,10 @@ import { UserPreferences, ProjectSummary, ProjectDeepDive, SkillLevel } from "..
 
 /**
  * Robustly parses and repairs JSON from Gemini model output.
- * Handles markdown code blocks and truncated responses.
  */
 function robustJsonParse(text: string): any {
+  if (!text) throw new Error("The model returned an empty response.");
+  
   let clean = text.trim();
 
   // Strip Markdown markers if present
@@ -26,21 +27,8 @@ function robustJsonParse(text: string): any {
     return JSON.parse(clean);
   } catch (e) {
     console.error("JSON Parse Error. Raw content:", text);
-    throw new Error("The architectural data was received but malformed. Please try again.");
+    throw new Error("Architectural data was received but malformed. Please try again.");
   }
-}
-
-/**
- * Validates the API key before attempting an AI call.
- * IMPORTANT: Always create a new instance right before making an API call 
- * to ensure it uses the most up-to-date API key from the environment/dialog.
- */
-function getAIInstance() {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey === "undefined" || apiKey === "") {
-    throw new Error("API_KEY_MISSING");
-  }
-  return new GoogleGenAI({ apiKey });
 }
 
 /**
@@ -61,25 +49,23 @@ const getTargetDifficulty = (level: SkillLevel): string => {
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
-  const ai = getAIInstance();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const targetDifficulty = getTargetDifficulty(prefs.skillLevel);
 
   const prompt = `
-You are a Senior Engineering Project Mentor. Generate unique project ideas for a student:
+You are a Senior Engineering Project Mentor. Generate 4 unique project ideas for an engineering student:
 - Semester: ${prefs.semester}
 - Branch: ${prefs.branch}
 - Domain: ${prefs.domain}
 - Skill Level: ${prefs.skillLevel}
 
-CRITICAL REQUIREMENT:
-Since the user is at the "${prefs.skillLevel}" skill level, you MUST set the "difficulty" of ALL projects to strictly "${targetDifficulty}".
-Do not deviate from this difficulty level.
+CRITICAL: Since the user is "${prefs.skillLevel}", set "difficulty" of ALL 4 projects to strictly "${targetDifficulty}".
 
-Return exactly 4 ideas in a JSON array. Each object must have: id, title, shortDescription (max 12 words), difficulty (MUST be "${targetDifficulty}"), and suitability (explaining why it fits a ${prefs.semester}th semester student).
+Return a JSON array of 4 objects. Each must have: id, title, shortDescription (max 12 words), difficulty (MUST be "${targetDifficulty}"), and suitability.
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-flash-latest",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -112,17 +98,17 @@ export async function generateProjectDeepDive(
   summary: ProjectSummary,
   prefs: UserPreferences
 ): Promise<ProjectDeepDive> {
-  const ai = getAIInstance();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
 Act as a Senior Project Architect. Provide a full technical blueprint for: "${summary.title}".
 Context: ${prefs.branch} Engineering, Semester ${prefs.semester}. Difficulty: ${summary.difficulty}.
 
-Return a JSON object containing: title, intro, fullDescription, techStack, roadmap, resources, vivaPrep (questions, concepts, mistakes, evaluatorExpectations), presentationTips, and closing.
+Return a JSON object with: title, intro, fullDescription, techStack (category/items), roadmap (week/task/details), resources (title/type/link), vivaPrep (questions, concepts, mistakes, evaluatorExpectations), presentationTips, and closing.
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-flash-latest",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
