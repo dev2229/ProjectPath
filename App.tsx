@@ -20,33 +20,10 @@ const App: React.FC = () => {
   const [selectedDetail, setSelectedDetail] = useState<ProjectDeepDive | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Only prompt for a key if one isn't already provided by the environment.
-   */
-  const ensureApiKey = async (): Promise<void> => {
-    // If the environment already has the key (e.g., Vercel), we don't need to ask.
-    if (process.env.API_KEY && process.env.API_KEY !== 'undefined') {
-      return;
-    }
-
-    const aistudio = (window as any).aistudio;
-    if (aistudio) {
-      try {
-        const hasKey = await aistudio.hasSelectedApiKey();
-        if (!hasKey) {
-          await aistudio.openSelectKey();
-        }
-      } catch (e) {
-        console.warn("Key selection dialog unavailable.");
-      }
-    }
-  };
-
   const handleFormSubmit = async (newPrefs: UserPreferences) => {
     setIsLoading(true);
     setError(null);
     try {
-      await ensureApiKey();
       setPrefs(newPrefs);
       const projectList = await generateProjectSummaries(newPrefs);
       setSummaries(projectList);
@@ -54,13 +31,7 @@ const App: React.FC = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error("Critical Engine Failure:", err);
-      const msg = err.message || "";
-      if (msg.includes("API_KEY_MISSING") || msg.includes("403") || msg.includes("key")) {
-        setError("AUTHENTICATION FAILED: A valid Gemini API Key is required. Please ensure it's set in your environment or select one via the dialog.");
-        (window as any).aistudio?.openSelectKey();
-      } else {
-        setError(msg || "The project engine encountered a disruption. Please try again.");
-      }
+      setError(err.message || "The project engine encountered a disruption. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -71,14 +42,13 @@ const App: React.FC = () => {
     setIsLoadingDetail(true);
     setError(null);
     try {
-      await ensureApiKey();
       const detail = await generateProjectDeepDive(summary, prefs);
       setSelectedDetail(detail);
       setView(AppView.DETAIL);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       console.error("Blueprint Failure:", err);
-      setError("Failed to initialize project blueprint. Please verify your connection and API key.");
+      setError("Failed to initialize project blueprint. Please verify your connection.");
     } finally {
       setIsLoadingDetail(false);
     }
@@ -122,10 +92,7 @@ const App: React.FC = () => {
           {error && (
             <div className="max-w-4xl mx-auto mb-16 p-8 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-3xl text-center font-bold animate-in slide-in-from-top-4 backdrop-blur-xl">
               <p className="mb-4">{error}</p>
-              <div className="flex gap-4 justify-center">
-                <button onClick={() => (window as any).aistudio?.openSelectKey()} className="px-6 py-2 bg-rose-500 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-colors">Select New Key</button>
-                <button onClick={() => setError(null)} className="px-6 py-2 bg-white/5 border border-white/10 text-white rounded-full text-xs font-black uppercase tracking-widest">Dismiss</button>
-              </div>
+              <button onClick={() => setError(null)} className="px-6 py-2 bg-white/5 border border-white/10 text-white rounded-full text-xs font-black uppercase tracking-widest">Dismiss</button>
             </div>
           )}
 

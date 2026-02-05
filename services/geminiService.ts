@@ -1,12 +1,10 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { UserPreferences, ProjectSummary, ProjectDeepDive, SkillLevel } from "../types.ts";
 
 /**
- * Robustly parses and repairs JSON from Gemini model output.
- * Handles markdown code blocks and ensures the output is valid.
+ * Robustly parses and repairs JSON from the proxy response.
  */
 function robustJsonParse(text: string): any {
-  if (!text) throw new Error("The model returned an empty response.");
+  if (!text) throw new Error("The engine returned an empty response.");
   
   let clean = text.trim();
 
@@ -38,6 +36,28 @@ function robustJsonParse(text: string): any {
 }
 
 /**
+ * Unified fetcher for the server-side Gemini proxy.
+ */
+async function callGeminiProxy(prompt: string, task: string): Promise<string> {
+  const response = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ prompt, task }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Proxy request failed with status ${response.status}`);
+  }
+
+  const result = await response.json();
+  // Expecting { text: "..." } from the server proxy
+  return result.text || "";
+}
+
+/**
  * Maps SkillLevel to strict Difficulty labels for the prompt.
  */
 const getTargetDifficulty = (level: SkillLevel): string => {
@@ -50,15 +70,11 @@ const getTargetDifficulty = (level: SkillLevel): string => {
 };
 
 /**
- * Generates tailored project ideas based on student preferences.
+ * Generates tailored project ideas based on student preferences via backend proxy.
  */
 export async function generateProjectSummaries(
   prefs: UserPreferences
 ): Promise<ProjectSummary[]> {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API_KEY_MISSING");
-
-  const ai = new GoogleGenAI({ apiKey });
   const targetDifficulty = getTargetDifficulty(prefs.skillLevel);
 
   const prompt = `
@@ -73,53 +89,25 @@ CRITICAL REQUIREMENT:
 Since the user is at the "${prefs.skillLevel}" skill level, you MUST set the "difficulty" of ALL projects to strictly "${targetDifficulty}".
 
 Output ONLY a JSON array of 4 objects. Each object must contain:
-- id: string (unique identifier)
+- id: string
 - title: string
 - shortDescription: string (max 12 words)
 - difficulty: string (must be "${targetDifficulty}")
-- suitability: string (why it fits this student)
+- suitability: string
 `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        minItems: 4,
-        maxItems: 4,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING },
-            title: { type: Type.STRING },
-            shortDescription: { type: Type.STRING },
-            difficulty: { type: Type.STRING },
-            suitability: { type: Type.STRING }
-          },
-          required: ["id", "title", "shortDescription", "difficulty", "suitability"]
-        }
-      }
-    }
-  });
-
-  const parsed = robustJsonParse(response.text);
+  const responseText = await callGeminiProxy(prompt, "generate_summaries");
+  const parsed = robustJsonParse(responseText);
   return Array.isArray(parsed) ? parsed : [];
 }
 
 /**
- * Generates a deep-dive project roadmap and viva preparation guide.
+ * Generates a deep-dive project roadmap and viva preparation guide via backend proxy.
  */
 export async function generateProjectDeepDive(
   summary: ProjectSummary,
   prefs: UserPreferences
 ): Promise<ProjectDeepDive> {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API_KEY_MISSING");
-
-  const ai = new GoogleGenAI({ apiKey });
-
   const prompt = `
 Act as a Senior Project Architect. Provide a full technical blueprint for the project: "${summary.title}".
 Context: ${prefs.branch} Engineering, Semester ${prefs.semester}. Difficulty Level: ${summary.difficulty}.
@@ -136,69 +124,6 @@ Return a JSON object with:
 - closing: string
 `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING },
-          intro: { type: Type.STRING },
-          fullDescription: { type: Type.STRING },
-          techStack: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                category: { type: Type.STRING },
-                items: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ["category", "items"]
-            }
-          },
-          roadmap: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                week: { type: Type.STRING },
-                task: { type: Type.STRING },
-                details: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ["week", "task", "details"]
-            }
-          },
-          resources: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                type: { type: Type.STRING },
-                link: { type: Type.STRING }
-              },
-              required: ["title", "type", "link"]
-            }
-          },
-          vivaPrep: {
-            type: Type.OBJECT,
-            properties: {
-              questions: { type: Type.ARRAY, items: { type: Type.STRING } },
-              concepts: { type: Type.ARRAY, items: { type: Type.STRING } },
-              mistakes: { type: Type.ARRAY, items: { type: Type.STRING } },
-              evaluatorExpectations: { type: Type.ARRAY, items: { type: Type.STRING } }
-            },
-            required: ["questions", "concepts", "mistakes", "evaluatorExpectations"]
-          },
-          presentationTips: { type: Type.ARRAY, items: { type: Type.STRING } },
-          closing: { type: Type.STRING }
-        },
-        required: ["title", "intro", "fullDescription", "techStack", "roadmap", "resources", "vivaPrep", "presentationTips", "closing"]
-      }
-    }
-  });
-
-  return robustJsonParse(response.text);
+  const responseText = await callGeminiProxy(prompt, "generate_deep_dive");
+  return robustJsonParse(responseText);
 }
