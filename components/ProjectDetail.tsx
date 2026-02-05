@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ProjectDeepDive } from '../types.ts';
 import Card from './Card.tsx';
@@ -93,7 +92,7 @@ const TimelineItem: React.FC<{
           <div className="overflow-hidden">
             <div className="pt-6 border-t border-white/10">
               <ul className="space-y-4">
-                {step.details?.map((detail, i) => (
+                {Array.isArray(step.details) && step.details.map((detail, i) => (
                   <li key={i} className="text-base text-slate-400 flex items-start font-medium animate-in slide-in-from-left-4 fade-in duration-300" style={{ animationDelay: `${i * 100}ms` }}>
                     <span className="w-2 h-2 rounded-full bg-orange-500 mr-4 mt-2 flex-shrink-0 shadow-[0_0_10px_rgba(255,92,0,0.8)]"></span> 
                     {detail}
@@ -144,18 +143,19 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ data, onBack }) => {
         <div>
           <Card title="Integration Stack" className="h-full border-orange-500/20 bg-orange-500/[0.03] p-12">
             <div className="space-y-10">
-              {data.techStack?.map((stack, idx) => (
+              {Array.isArray(data.techStack) && data.techStack.map((stack, idx) => (
                 <div key={idx}>
                   <h4 className="text-[10px] font-black text-orange-400 uppercase tracking-[0.3em] mb-4">{stack.category}</h4>
                   <div className="flex flex-wrap gap-3">
-                    {stack.items?.map((item, i) => (
+                    {Array.isArray(stack.items) && stack.items.map((item, i) => (
                       <span key={i} className="px-4 py-2 bg-white/5 border border-white/10 text-white text-[10px] font-black rounded-xl tracking-wider">
                         {item}
                       </span>
                     ))}
                   </div>
                 </div>
-              )) || <p className="text-slate-500 text-xs">No stack defined.</p>}
+              ))}
+              {(!data.techStack || !Array.isArray(data.techStack) || data.techStack.length === 0) && <p className="text-slate-500 text-xs">No stack defined.</p>}
             </div>
           </Card>
         </div>
@@ -169,7 +169,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ data, onBack }) => {
         </div>
         
         <div className="max-w-4xl mx-auto relative px-4">
-          {data.roadmap?.map((step, idx) => (
+          {Array.isArray(data.roadmap) && data.roadmap.map((step, idx) => (
             <TimelineItem 
               key={idx} 
               step={step} 
@@ -177,7 +177,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ data, onBack }) => {
               isExpanded={expandedIndex === idx}
               onToggle={() => setExpandedIndex(expandedIndex === idx ? null : idx)}
             />
-          )) || <p className="text-slate-500 text-center">Roadmap not available.</p>}
+          ))}
+          {(!data.roadmap || !Array.isArray(data.roadmap) || data.roadmap.length === 0) && <p className="text-slate-500 text-center">Roadmap not available.</p>}
         </div>
       </section>
 
@@ -197,19 +198,21 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ data, onBack }) => {
             <div>
               <h4 className="text-orange-400 font-black mb-6 uppercase tracking-[0.3em] text-[10px]">Interrogation Scenarios</h4>
               <ul className="space-y-5">
-                {data.vivaPrep?.questions?.map((q, i) => (
+                {Array.isArray(data.vivaPrep?.questions) && data.vivaPrep.questions.map((q, i) => (
                   <li key={i} className="text-base text-slate-400 leading-relaxed pl-6 border-l border-orange-500/30 font-medium italic">{q}</li>
-                )) || <li className="text-slate-500 text-sm">No scenarios listed.</li>}
+                ))}
+                {(!data.vivaPrep?.questions || !Array.isArray(data.vivaPrep.questions)) && <li className="text-slate-500 text-sm">No scenarios listed.</li>}
               </ul>
             </div>
             <div>
               <h4 className="text-slate-500 font-black mb-6 uppercase tracking-[0.3em] text-[10px]">Conceptual Anchors</h4>
               <div className="flex flex-wrap gap-3">
-                {data.vivaPrep?.concepts?.map((c, i) => (
+                {Array.isArray(data.vivaPrep?.concepts) && data.vivaPrep.concepts.map((c, i) => (
                   <span key={i} className="bg-white/5 px-5 py-2.5 rounded-2xl text-[10px] font-black text-slate-200 border border-white/10 hover:border-orange-500/40 transition-all uppercase tracking-widest">
                     {c}
                   </span>
-                )) || <span className="text-slate-500 text-xs">No anchors defined.</span>}
+                ))}
+                {(!data.vivaPrep?.concepts || !Array.isArray(data.vivaPrep.concepts)) && <span className="text-slate-500 text-xs">No anchors defined.</span>}
               </div>
             </div>
           </div>
@@ -218,22 +221,24 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ data, onBack }) => {
             <div>
               <h4 className="text-rose-400 font-black mb-6 uppercase tracking-[0.3em] text-[10px]">Critical Failure Modes</h4>
               <ul className="space-y-4">
-                {data.vivaPrep?.mistakes?.map((m, i) => (
+                {Array.isArray(data.vivaPrep?.mistakes) && data.vivaPrep.mistakes.map((m, i) => (
                   <li key={i} className="text-sm text-slate-400 flex items-start bg-white/5 p-4 rounded-3xl border border-white/5 font-medium">
                     <span className="text-rose-500 mr-4 font-black">✕</span> {m}
                   </li>
-                )) || <li className="text-slate-500 text-sm">No data.</li>}
+                ))}
+                {(!data.vivaPrep?.mistakes || !Array.isArray(data.vivaPrep.mistakes)) && <li className="text-slate-500 text-sm">No data.</li>}
               </ul>
             </div>
             <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] p-10 border border-white/10 shadow-2xl">
               <h4 className="text-orange-500 font-black mb-6 uppercase tracking-[0.3em] text-[10px]">Evaluator KPI</h4>
               <ul className="space-y-4">
-                {data.vivaPrep?.evaluatorExpectations?.map((e, i) => (
+                {Array.isArray(data.vivaPrep?.evaluatorExpectations) && data.vivaPrep.evaluatorExpectations.map((e, i) => (
                   <li key={i} className="text-sm text-slate-200 flex items-center font-bold">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#ff5c00] mr-4 shadow-[0_0_15px_rgba(255,92,0,0.6)]"></div>
                     {e}
                   </li>
-                )) || <li className="text-slate-500 text-sm">No data.</li>}
+                ))}
+                {(!data.vivaPrep?.evaluatorExpectations || !Array.isArray(data.vivaPrep.evaluatorExpectations)) && <li className="text-slate-500 text-sm">No data.</li>}
               </ul>
             </div>
           </div>
@@ -244,7 +249,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ data, onBack }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         <Card title="Knowledge Assets" className="rounded-[3rem] p-12 border-none bg-white/[0.02]">
           <div className="space-y-4">
-            {data.resources?.map((res, i) => (
+            {Array.isArray(data.resources) && data.resources.map((res, i) => (
               <div key={i} className="group/res flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-orange-500/10 transition-all cursor-pointer border border-white/5 hover:border-orange-500/20">
                 <div>
                   <h4 className="font-black text-slate-200 text-sm group-hover/res:text-white transition-colors">{res.title}</h4>
@@ -254,16 +259,18 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ data, onBack }) => {
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </div>
               </div>
-            )) || <p className="text-slate-500 text-sm italic py-4">Prioritize vendor-specific official documentation.</p>}
+            ))}
+            {(!data.resources || !Array.isArray(data.resources) || data.resources.length === 0) && <p className="text-slate-500 text-sm italic py-4">Prioritize vendor-specific official documentation.</p>}
           </div>
         </Card>
         <Card title="Presentation Strategy" className="bg-white/[0.02] border-white/5 p-12 rounded-[3rem] text-white">
           <ul className="space-y-5">
-            {data.presentationTips?.map((tip, i) => (
+            {Array.isArray(data.presentationTips) && data.presentationTips.map((tip, i) => (
               <li key={i} className="flex items-start text-base text-slate-300 font-semibold leading-relaxed">
                 <span className="mr-4 text-orange-500 text-xl">⚡</span> {tip}
               </li>
-            )) || <li className="text-slate-500 text-sm italic">Focus on clear visuals and functional demos.</li>}
+            ))}
+            {(!data.presentationTips || !Array.isArray(data.presentationTips) || data.presentationTips.length === 0) && <li className="text-slate-500 text-sm italic">Focus on clear visuals and functional demos.</li>}
           </ul>
         </Card>
       </div>

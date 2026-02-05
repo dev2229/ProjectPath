@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { MentorOutput } from '../types.ts';
 import Card from './Card.tsx';
@@ -31,7 +30,7 @@ const ProjectMentorOutput: React.FC<ProjectMentorOutputProps> = ({ data, onReset
           Tailored Project Ideas
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {data.projectIdeas.map((idea, idx) => (
+          {Array.isArray(data.projectIdeas) && data.projectIdeas.map((idea, idx) => (
             <Card key={idx} className="flex flex-col h-full border-t-4 border-t-indigo-500">
               <div className="mb-4">
                 <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
@@ -43,7 +42,7 @@ const ProjectMentorOutput: React.FC<ProjectMentorOutputProps> = ({ data, onReset
               <h3 className="text-lg font-bold text-slate-800 mb-2 leading-tight">{idea.title}</h3>
               <p className="text-sm text-slate-600 mb-4 flex-grow">{idea.description}</p>
               <div className="mt-auto pt-4 border-t border-slate-100">
-                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Why this semester?</p>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Why suitability?</p>
                 <p className="text-sm text-slate-700 italic">{idea.suitability}</p>
               </div>
             </Card>
@@ -58,11 +57,11 @@ const ProjectMentorOutput: React.FC<ProjectMentorOutputProps> = ({ data, onReset
           Recommended Tech Stack
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {data.techStack.map((stack, idx) => (
+          {Array.isArray(data.techStack) && data.techStack.map((stack, idx) => (
             <Card key={idx} className="bg-slate-50 border-none">
               <h4 className="font-bold text-indigo-700 text-sm mb-3 uppercase tracking-wide">{stack.category}</h4>
               <ul className="space-y-2">
-                {stack.items.map((item, i) => (
+                {Array.isArray(stack.items) && stack.items.map((item, i) => (
                   <li key={i} className="flex items-center text-slate-700 text-sm">
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mr-2"></span>
                     {item}
@@ -81,14 +80,14 @@ const ProjectMentorOutput: React.FC<ProjectMentorOutputProps> = ({ data, onReset
           Week-wise Execution Roadmap
         </h2>
         <div className="relative border-l-2 border-slate-200 ml-4 space-y-10 pl-8">
-          {data.roadmap.map((step, idx) => (
+          {Array.isArray(data.roadmap) && data.roadmap.map((step, idx) => (
             <div key={idx} className="relative">
               <div className="absolute -left-[41px] top-0 w-5 h-5 rounded-full bg-white border-4 border-indigo-500"></div>
               <div>
                 <span className="text-sm font-bold text-indigo-600 uppercase tracking-widest">{step.week}</span>
                 <h4 className="text-lg font-bold text-slate-800 mb-2">{step.task}</h4>
                 <ul className="list-disc list-inside space-y-1">
-                  {step.details.map((detail, i) => (
+                  {Array.isArray(step.details) && step.details.map((detail, i) => (
                     <li key={i} className="text-sm text-slate-600">{detail}</li>
                   ))}
                 </ul>
@@ -112,7 +111,7 @@ const ProjectMentorOutput: React.FC<ProjectMentorOutputProps> = ({ data, onReset
                 <span className="mr-2">❓</span> Common Viva Questions
               </h4>
               <ul className="space-y-2">
-                {data.vivaPrep.questions.map((q, i) => (
+                {Array.isArray(data.vivaPrep?.questions) && data.vivaPrep.questions.map((q, i) => (
                   <li key={i} className="text-sm text-slate-300 border-l-2 border-emerald-500/30 pl-4">{q}</li>
                 ))}
               </ul>
@@ -122,7 +121,7 @@ const ProjectMentorOutput: React.FC<ProjectMentorOutputProps> = ({ data, onReset
                 <span className="mr-2">🧠</span> Core Concepts to Master
               </h4>
               <div className="flex flex-wrap gap-2">
-                {data.vivaPrep.concepts.map((c, i) => (
+                {Array.isArray(data.vivaPrep?.concepts) && data.vivaPrep.concepts.map((c, i) => (
                   <span key={i} className="bg-slate-800 px-3 py-1 rounded-full text-xs font-medium text-blue-200 border border-slate-700">
                     {c}
                   </span>
@@ -137,7 +136,7 @@ const ProjectMentorOutput: React.FC<ProjectMentorOutputProps> = ({ data, onReset
                 <span className="mr-2">⚠️</span> Common Mistakes to Avoid
               </h4>
               <ul className="space-y-2">
-                {data.vivaPrep.mistakes.map((m, i) => (
+                {Array.isArray(data.vivaPrep?.mistakes) && data.vivaPrep.mistakes.map((m, i) => (
                   <li key={i} className="text-sm text-slate-300 flex items-start">
                     <span className="text-rose-500 mr-2">•</span> {m}
                   </li>
@@ -149,7 +148,7 @@ const ProjectMentorOutput: React.FC<ProjectMentorOutputProps> = ({ data, onReset
                 <span className="mr-2">🎯</span> Evaluator's Checklist
               </h4>
               <ul className="space-y-2">
-                {data.vivaPrep.evaluatorExpectations.map((e, i) => (
+                {Array.isArray(data.vivaPrep?.evaluatorExpectations) && data.vivaPrep.evaluatorExpectations.map((e, i) => (
                   <li key={i} className="text-sm text-slate-300 flex items-center">
                     <svg className="w-4 h-4 text-emerald-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />

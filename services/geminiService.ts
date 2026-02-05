@@ -53,7 +53,7 @@ const getTargetDifficulty = (level: SkillLevel): string => {
 };
 
 /**
- * Generates 4 tailored project ideas based on student preferences.
+ * Generates tailored project ideas based on student preferences.
  */
 export async function generateProjectSummaries(
   prefs: UserPreferences
@@ -62,14 +62,14 @@ export async function generateProjectSummaries(
   const targetDifficulty = getTargetDifficulty(prefs.skillLevel);
 
   const prompt = `
-You are a Senior Engineering Project Mentor. Generate 4 unique project ideas for a student:
+You are a Senior Engineering Project Mentor. Generate unique project ideas for a student:
 - Semester: ${prefs.semester}
 - Branch: ${prefs.branch}
 - Domain: ${prefs.domain}
 - Skill Level: ${prefs.skillLevel}
 
 CRITICAL REQUIREMENT:
-Since the user is at the "${prefs.skillLevel}" skill level, you MUST set the "difficulty" of ALL 4 projects to strictly "${targetDifficulty}".
+Since the user is at the "${prefs.skillLevel}" skill level, you MUST set the "difficulty" of ALL projects to strictly "${targetDifficulty}".
 Do not deviate from this difficulty level.
 
 Return exactly 4 ideas in a JSON array. Each object must have: id, title, shortDescription (max 12 words), difficulty (MUST be "${targetDifficulty}"), and suitability (explaining why it fits a ${prefs.semester}th semester student).
@@ -115,14 +115,70 @@ export async function generateProjectDeepDive(
 Act as a Senior Project Architect. Provide a full technical blueprint for: "${summary.title}".
 Context: ${prefs.branch} Engineering, Semester ${prefs.semester}. Difficulty: ${summary.difficulty}.
 
-Return a JSON object containing: title, intro, fullDescription, techStack (array of {category, items[]}), roadmap (array of {week, task, details[]}), resources (array of {title, type, link}), vivaPrep (object with questions, concepts, mistakes, evaluatorExpectations), presentationTips[], and closing.
+Return a JSON object containing: title, intro, fullDescription, techStack, roadmap, resources, vivaPrep (questions, concepts, mistakes, evaluatorExpectations), presentationTips, and closing.
 `;
 
   const response = await ai.models.generateContent({
     model: "gemini-flash-latest",
     contents: prompt,
     config: {
-      responseMimeType: "application/json"
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          intro: { type: Type.STRING },
+          fullDescription: { type: Type.STRING },
+          techStack: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                category: { type: Type.STRING },
+                items: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["category", "items"]
+            }
+          },
+          roadmap: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                week: { type: Type.STRING },
+                task: { type: Type.STRING },
+                details: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["week", "task", "details"]
+            }
+          },
+          resources: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                type: { type: Type.STRING },
+                link: { type: Type.STRING }
+              },
+              required: ["title", "type", "link"]
+            }
+          },
+          vivaPrep: {
+            type: Type.OBJECT,
+            properties: {
+              questions: { type: Type.ARRAY, items: { type: Type.STRING } },
+              concepts: { type: Type.ARRAY, items: { type: Type.STRING } },
+              mistakes: { type: Type.ARRAY, items: { type: Type.STRING } },
+              evaluatorExpectations: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["questions", "concepts", "mistakes", "evaluatorExpectations"]
+          },
+          presentationTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+          closing: { type: Type.STRING }
+        },
+        required: ["title", "intro", "fullDescription", "techStack", "roadmap", "resources", "vivaPrep", "presentationTips", "closing"]
+      }
     }
   });
 
