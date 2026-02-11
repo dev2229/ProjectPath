@@ -78,10 +78,10 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ data, onBack }) => {
 
   return (
     <div className="space-y-12 md:space-y-20 animate-in fade-in slide-in-from-bottom-12 duration-1000 max-w-6xl mx-auto pb-20 md:pb-32 relative z-10 w-full px-2">
-      <div className="flex justify-start">
+      <div className="flex justify-center">
         <button onClick={onBack} className="group flex items-center text-slate-400 font-black uppercase tracking-widest text-[9px] md:text-[10px] px-6 py-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all">
           <svg className="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-          Back to List
+          Return to Hub
         </button>
       </div>
 
