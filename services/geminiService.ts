@@ -1,32 +1,22 @@
+
 import { UserPreferences, ProjectSummary, ProjectDeepDive, SkillLevel } from "../types.ts";
 
-/**
- * Robustly parses and repairs JSON from a string, handling potential AI formatting noise.
- */
 function robustJsonParse(text: string): any {
   if (!text) throw new Error("The engine returned an empty response.");
-  
   let clean = text.trim();
-
-  // Strip Markdown markers if the model ignored the JSON output instruction
   if (clean.startsWith("```")) {
     clean = clean.replace(/^```json\s*|\s*```$/g, "").replace(/^```\s*|\s*```$/g, "");
   }
-
   try {
     return JSON.parse(clean);
   } catch (e) {
-    console.error("JSON Parse Error. Raw content:", text);
-    // Attempt basic brace/bracket repair for truncated streams
     let repair = clean;
     const openBraces = (repair.match(/\{/g) || []).length;
     const closeBraces = (repair.match(/\}/g) || []).length;
     for (let i = 0; i < openBraces - closeBraces; i++) repair += "}";
-    
     const openBrackets = (repair.match(/\[/g) || []).length;
     const closeBrackets = (repair.match(/\]/g) || []).length;
     for (let i = 0; i < openBrackets - closeBrackets; i++) repair += "]";
-    
     try {
       return JSON.parse(repair);
     } catch (e2) {
@@ -35,26 +25,19 @@ function robustJsonParse(text: string): any {
   }
 }
 
-/**
- * Communicates with the secure API folder endpoint.
- */
 async function callGeminiApi(prompt: string, config: any = {}): Promise<string> {
   const response = await fetch('/api/gemini', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, config }),
   });
-
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     if (response.status === 429) {
-      throw new Error("The engine is currently overloaded (Quota Exceeded). Please wait 30 seconds and try again.");
+      throw new Error("The engine is currently overloaded. Please wait 30 seconds.");
     }
     throw new Error(errorData.message || `API Error: ${response.status}`);
   }
-
   const result = await response.json();
   return result.text;
 }
@@ -68,21 +51,19 @@ const getTargetDifficulty = (level: SkillLevel): string => {
   }
 };
 
-export async function generateProjectSummaries(
-  prefs: UserPreferences
-): Promise<ProjectSummary[]> {
+export async function generateProjectSummaries(prefs: UserPreferences): Promise<ProjectSummary[]> {
   const targetDifficulty = getTargetDifficulty(prefs.skillLevel);
-
   const prompt = `
-Generate exactly 4 unique engineering project ideas for:
+Generate exactly 4 unique engineering project ideas specifically for a Semester ${prefs.semester} student.
 - Branch: ${prefs.branch}
 - Domain: ${prefs.domain}
 - Skill Level: ${prefs.skillLevel}
-- Current Semester: ${prefs.semester}
 
-Rules:
+Rules for MVP v1.1:
 1. Difficulty MUST be strictly "${targetDifficulty}".
-2. Suitability must explain why this fits a ${prefs.skillLevel} student.
+2. learningOutcomes: Describe 1 major technical skill they will master.
+3. expectedEffort: Suggest hours per week (e.g., "8-10 hrs/week").
+4. suitability: Explain why this fits a Semester ${prefs.semester} student specifically.
 `;
 
   const responseText = await callGeminiApi(prompt, {
@@ -97,30 +78,34 @@ Rules:
           title: { type: "STRING" },
           shortDescription: { type: "STRING" },
           difficulty: { type: "STRING", enum: ["Easy", "Medium", "Hard"] },
-          suitability: { type: "STRING" }
+          suitability: { type: "STRING" },
+          learningOutcomes: { type: "STRING" },
+          expectedEffort: { type: "STRING" }
         },
-        required: ["id", "title", "shortDescription", "difficulty", "suitability"]
+        required: ["id", "title", "shortDescription", "difficulty", "suitability", "learningOutcomes", "expectedEffort"]
       }
     }
   });
 
-  const parsed = robustJsonParse(responseText);
-  return Array.isArray(parsed) ? parsed : [];
+  return robustJsonParse(responseText);
 }
 
-export async function generateProjectDeepDive(
-  summary: ProjectSummary,
-  prefs: UserPreferences
-): Promise<ProjectDeepDive> {
+export async function generateProjectDeepDive(summary: ProjectSummary, prefs: UserPreferences): Promise<ProjectDeepDive> {
   const prompt = `
-Provide a comprehensive technical roadmap for the project: "${summary.title}".
-Student Profile: ${prefs.branch}, Sem ${prefs.semester}, ${summary.difficulty} difficulty.
+Provide a technical roadmap for: "${summary.title}".
+Context: Sem ${prefs.semester}, ${summary.difficulty} difficulty.
 
-Deliver a detailed blueprint including tech stack, 8-week roadmap, viva questions, and presentation strategy.
+CRITICAL ROADMAP STRUCTURE (MVP v1.1):
+Divide the roadmap into exactly 5 logical phases:
+1. Problem Understanding & Research
+2. Environment Setup & Tooling
+3. Core Implementation (MVP)
+4. Testing & Refinement
+5. Documentation & Viva Preparation
 `;
 
   const responseText = await callGeminiApi(prompt, {
-    model: 'gemini-3-flash-preview', // Switched from Pro to Flash to resolve 429 quota errors
+    model: 'gemini-3-flash-preview',
     responseMimeType: "application/json",
     responseSchema: {
       type: "OBJECT",
@@ -144,11 +129,12 @@ Deliver a detailed blueprint including tech stack, 8-week roadmap, viva question
           items: {
             type: "OBJECT",
             properties: {
+              phase: { type: "STRING" },
               week: { type: "STRING" },
               task: { type: "STRING" },
               details: { type: "ARRAY", items: { type: "STRING" } }
             },
-            required: ["week", "task", "details"]
+            required: ["phase", "week", "task", "details"]
           }
         },
         resources: {

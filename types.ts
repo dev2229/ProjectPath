@@ -27,6 +27,8 @@ export interface ProjectSummary {
   shortDescription: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   suitability: string;
+  learningOutcomes: string;
+  expectedEffort: string;
 }
 
 export interface TechStackItem {
@@ -35,6 +37,7 @@ export interface TechStackItem {
 }
 
 export interface RoadmapStep {
+  phase: string;
   week: string;
   task: string;
   details: string[];
@@ -65,7 +68,6 @@ export interface ProjectDeepDive {
   closing: string;
 }
 
-// Added MentorOutput interface to fix the module export error in components/ProjectMentorOutput.tsx
 export interface MentorOutput {
   intro: string;
   projectIdeas: {
